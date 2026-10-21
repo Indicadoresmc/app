@@ -1,0 +1,16 @@
+CORRECCION DE VINCULACION DE NOMBRES
+
+El importador ahora compara simultaneamente:
+- apellido_nombre
+- nombre_normalizado
+- variantes activas
+- texto sin tildes, comas ni diferencias de mayusculas
+- firma de palabras para tolerar cambios de orden
+
+Ejemplo equivalente:
+GAMARRA Javier Nestor
+Gamarra, Javier Nestor
+Javier Nestor Gamarra
+
+El encabezado Operador sigue excluido.
+La carga de Noche reemplaza solamente Noche; no borra Manana ni Tarde.
