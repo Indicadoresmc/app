@@ -227,8 +227,8 @@ export function CompararMesAnterior({ ctx, actual }){
 }
 
 /* ===================== Alertas y calidad vs velocidad ===================== */
-export function Alertas({ ctx, operadores }){
-  const calc = useMemo(() => {
+// Se usa en la pantalla de Alertas y para el número que aparece al lado de "Alertas" en el menú.
+export function calcularAlertas(ctx, operadores){
     // Racha de días trabajados seguidos por debajo del 100% de cumplimiento.
     const rachas = operadores.map(o => { const dias = [...agrupar(o.rows, r => iso(r.fecha)).entries()].sort(([a], [b]) => a.localeCompare(b)).map(([f, rs]) => ({ f, cum: resumen(rs, [], 0).cumplimiento }));
       let mejor = { largo: 0 }, act = { largo: 0 }; dias.forEach(d => { if(d.cum < 100){ act = act.largo ? { ...act, largo: act.largo + 1, hasta: d.f } : { largo: 1, desde: d.f, hasta: d.f }; if(act.largo > mejor.largo) mejor = act; } else act = { largo: 0 }; });
@@ -243,7 +243,8 @@ export function Alertas({ ctx, operadores }){
     }
     const pocos = operadores.filter(o => o.dias > 0 && o.dias < MIN_DIAS).map(o => ({ nombre: o.name, dias: o.dias, paletas: o.paletas })).sort((a, b) => a.dias - b.dias);
     return { rachas, suben, pocos };
-  }, [operadores, ctx.picking, ctx.errors, ctx.periodo, ctx.year, ctx.month]);
+}
+export function Alertas({ ctx, operadores, calc }){
   return <section>
     <h2>🚨 Alertas</h2>
     <TablaDatos titulo="Días seguidos por debajo del target" sub="Operadores con 3 o más días trabajados seguidos con cumplimiento menor a 100%." archivo="Alertas_debajo_target" vacio="Nadie tuvo 3 días seguidos por debajo del target." data={calc.rachas} cols={[
