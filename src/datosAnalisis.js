@@ -39,4 +39,16 @@ export function cargarDatosAnalisis({ forzar = false } = {}){
   return cache;
 }
 
-export function invalidarDatosAnalisis(){ cache = null; }
+// Tablas que usan las secciones nuevas (Clasificación, Autoelevador, historial...).
+// Cada una se descarga recién cuando se abre la sección que la necesita.
+const extra = new Map();
+export function cargarTabla(tabla, { forzar = false } = {}){
+  if(forzar || !extra.has(tabla)){
+    const p = cargarCompleto(tabla);
+    p.catch(() => extra.delete(tabla));
+    extra.set(tabla, p);
+  }
+  return extra.get(tabla);
+}
+
+export function invalidarDatosAnalisis(){ cache = null; extra.clear(); }
