@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&display=swap');
+
+.lx{min-height:100vh;min-height:100dvh;background:#0B0B0B;color:#F5F5F5;font-family:Barlow,system-ui,sans-serif;display:flex;justify-content:center}
+.lx *{box-sizing:border-box}
+.lx-col{width:100%;max-width:420px;padding:40px 24px 24px;display:flex;flex-direction:column;gap:18px}
+.lx-marca{font-size:13px;color:#A3A3A3;font-weight:600;letter-spacing:1.5px}
+.lx label{display:inline;margin:0;font-size:14px;font-weight:600;color:#D4D4D4}
+
+.lx-scene-out{width:100%;display:flex;justify-content:center}
+.lx-scene{width:342px;height:250px;flex:none;position:relative;border-radius:20px;background:#111;border:1px solid #1F1F1F;overflow:hidden}
+.lx-piso{position:absolute;left:0;right:0;bottom:0;height:34px;background:#171717;border-top:2px solid #262626}
+.lx-linea{position:absolute;left:0;right:0;bottom:14px;height:3px;background:repeating-linear-gradient(90deg,#FFC000 0 14px,transparent 14px 28px);opacity:.5}
+.lx-rack{position:absolute;left:10px;bottom:34px;width:56px;height:156px;border-left:4px solid #3A3A3A;border-right:4px solid #3A3A3A;display:flex;flex-direction:column;justify-content:space-between;padding:4px 3px 0}
+.lx-estante{display:flex;gap:3px;border-bottom:3px solid #FF8A00;padding-bottom:2px}
+.lx-estante div{flex:1;height:16px;border-radius:2px}
+
+.lx-camion{position:absolute;left:226px;bottom:30px;width:170px;height:124px;transition:transform 700ms cubic-bezier(.5,0,.3,1)}
+.lx-caja{position:absolute;left:0;top:0;width:122px;height:100px;border-radius:6px;background:#1C1C1C;border:2px solid #3A3A3A;overflow:hidden}
+.lx-caja-puerta{position:absolute;left:0;top:0;bottom:0;width:6px;background:#2E2E2E}
+.lx-caja-franja{position:absolute;left:0;right:0;top:10px;height:6px;background:#FFC000}
+.lx-escudo{position:absolute;left:28px;top:22px;width:64px;height:64px;border-radius:50%;border:2px solid #F5F5F5;background:#0B0B0B}
+
+.lx-carrier{position:absolute;left:0;bottom:34px;width:236px;height:120px;transition:transform 900ms cubic-bezier(.5,0,.3,1)}
+.lx-pallet{position:absolute;left:118px;bottom:0;width:104px;padding:0 3px;display:flex;flex-direction:column;gap:3px;transition:opacity 150ms ease}
+.lx-fila{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.lx-slot{height:22px;border-radius:3px;border:1.5px dashed #2A2A2A;position:relative}
+.lx-cajon{position:absolute;inset:-1.5px;border-radius:3px;background:#FFC000;color:#0B0B0B;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;transition:transform 320ms cubic-bezier(.2,1.4,.4,1),opacity 180ms ease}
+.lx-tabla{height:5px;background:#8A6A3A;border-radius:1px}
+.lx-tacos{height:5px;display:flex;justify-content:space-between;padding:0 4px}
+.lx-tacos div{width:16px;background:#6E5430}
+.lx-auto{position:absolute;left:44px;bottom:-4px;width:84px;height:92px;transition:transform 900ms cubic-bezier(.5,0,.3,1),opacity 300ms ease}
+.lx-operario{position:absolute;left:74px;bottom:34px;width:36px;height:74px;transition:transform 700ms ease,opacity 500ms ease}
+.lx-operario>div{width:36px;height:74px;transform-origin:bottom center}
+.lx-caption{position:absolute;left:14px;top:12px;padding:4px 10px;border-radius:999px;background:#0B0B0B;border:1px solid #2A2A2A;font-size:12px;font-weight:600}
+
+.lx-etapas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lx-etapas>div{display:flex;flex-direction:column;gap:6px}
+.lx-etapas span{font-size:12px;font-weight:600}
+.lx-barra{height:4px;border-radius:4px;transition:background 300ms ease}
+
+.lx-form{display:flex;flex-direction:column;gap:10px}
+.lx-lab{display:flex;justify-content:space-between;align-items:baseline}
+.lx-lab span{font-size:13px;color:#A3A3A3}
+.lx-lab-solo{display:block !important}
+.lx .lx-input{width:100%;height:58px;border-radius:14px;border:2px solid #2A2A2A;background:#161616;color:#F5F5F5;padding:0 18px;font-size:20px;outline:none}
+.lx .lx-input:focus{border-color:#FFC000}
+.lx .lx-input::placeholder{color:#6B6B6B}
+.lx .lx-input-leg{height:64px;color:#FFC000;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;letter-spacing:6px}
+.lx-ayuda{font-size:14px;color:#A3A3A3}
+.lx-error{background:#2A0F0F;color:#FF9C9C;border:1px solid #5A1E1E;padding:12px;border-radius:10px;font-size:14px}
+.lx .lx-btn{height:60px;margin-top:4px;border:0;border-radius:16px;background:#FFC000;color:#0B0B0B;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:0}
+.lx .lx-btn:disabled{background:#2A2A2A;color:#8A8A8A;cursor:default}
+.lx .lx-link{align-self:flex-start;min-height:44px;padding:0;border:0;background:transparent;color:#A3A3A3;font-size:14px;font-family:Barlow,sans-serif;cursor:pointer}
+.lx .lx-link:hover{color:#FFC000}
+.lx button:focus-visible{outline:2px solid #FFC000;outline-offset:3px}
+.lx-estado{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;padding-top:12px}
+.lx-estado strong{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px}
+.lx-estado span{font-size:15px;color:#A3A3A3}
+.lx-pie{margin-top:auto;display:flex;flex-direction:column;gap:2px;font-size:13px;color:#8A8A8A}
+
+@keyframes lxLift{0%{transform:translateY(0) rotate(0)}40%{transform:translateY(-5px) rotate(-6deg)}100%{transform:translateY(0) rotate(0)}}
+@keyframes lxRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lxRumble{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes lxBeacon{0%,100%{opacity:1}50%{opacity:.2}}
+.lx-lift{animation:lxLift 380ms ease-out}
+.lx-rise{animation:lxRise 360ms ease-out both}
+.lx-rumble{animation:lxRumble 220ms linear infinite}
+.lx-baliza{animation:lxBeacon 700ms ease-in-out infinite}
+
+@media(max-width:370px){.lx-scene{transform:scale(.86);transform-origin:top center;margin-bottom:-35px}}
+@media(prefers-reduced-motion:reduce){.lx *{animation:none !important;transition:none !important}}
