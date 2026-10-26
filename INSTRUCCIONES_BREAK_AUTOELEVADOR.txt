@@ -1,8 +1,0 @@
-1. Ejecutar una sola vez supabase/breaks_autoelevador.sql.
-2. Subir el proyecto completo a GitHub.
-3. Administrador > Carga mensual > Autoelevador > Horarios de break.
-4. Configurar Mañana, Tarde y Noche y asignar cada persona.
-5. Regla: si un intervalo toca la franja asignada, todo el intervalo cuenta como Pausa real.
-6. Exceso = Pausa real - duración prevista.
-7. Los demás registros Entre operaciones se muestran como Intervalo operativo.
-8. Inicio, Cierre y Ajuste según matriz continúan separados.

@@ -1,13 +1,17 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{lazy,Suspense,useEffect,useMemo,useState} from 'react';
 import{createRoot}from'react-dom/client';
 import{supabase}from'./supabase';
-import AnalisisOperativoV3 from './AnalisisOperativoV3';
 import AutoelevadorPersonal from './AutoelevadorPersonal';
-import AutoelevadorCarga from './AutoelevadorCarga';
 import LoginEscena from './LoginEscena';
 import{UserRound,ShieldCheck,ChevronRight,LogOut,PackageCheck,TrendingUp,FileSpreadsheet,CheckCircle2,Upload,CalendarDays,Target,AlertTriangle,Truck}from'lucide-react';
-import*as XLSX from'xlsx';
+import{invalidarDatosAnalisis}from'./datosAnalisis';
 import'./styles.css';
+// Se descargan recién cuando el administrador entra a esas secciones.
+const AnalisisOperativoV3=lazy(()=>import('./AnalisisOperativoV3'));
+const AutoelevadorCarga=lazy(()=>import('./AutoelevadorCarga'));
+const TIPOS_CARGA=[['manual','📦 Clasificación'],['picking','📈 Picking'],['voice','🎧 Errores Voice'],['gatera','⚠️ Errores Gatera'],['autoelevador','🚜 Autoelevador']];
+// La librería de Excel se carga al revisar el primer archivo.
+let XLSX;
 const fmt=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(n||0));
 const fechaAR=f=>{const [y,m,d]=String(f||'').split('-');return d&&m&&y?`${d}/${m}/${y}`:f};
 const nombreMes=m=>['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m]||m;
@@ -44,480 +48,16 @@ function excelFecha(v){if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(
 function segundos(v){if(v==null||v==='')return null;if(typeof v==='number')return Math.round(v<2?v*86400:v);const m=String(v).match(/^(\d+):(\d+)(?::(\d+))?/);return m?(+m[1]*3600)+(+m[2]*60)+ +(m[3]||0):null}
 function hora(v){if(v==null||v==='')return null;if(typeof v==='number')return XLSX.SSF.format('hh:mm:ss',v);return String(v).slice(0,8)}
 async function insertarLotes(tabla,filas){for(let i=0;i<filas.length;i+=250){const{error}=await supabase.from(tabla).insert(filas.slice(i,i+250));if(error)throw error}}
-function AnalisisPersonal() {
-const [tab, setTab] = useState('dashboard');
-  
-  const [periodo, setPeriodo] = useState('mes');
-  
- const [mejorOperador, setMejorOperador] = useState('--');
-const [segundoOperador, setSegundoOperador] = useState('--');
-const [requiereAtencion, setRequiereAtencion] = useState('--');
-const [mejorCancha, setMejorCancha] = useState('--');
-  const rankingOperadores = [
-  mejorOperador,
-  segundoOperador,
-  requiereAtencion
-].filter(Boolean);
-const [productividadGeneral, setProductividadGeneral] = useState('--');
-const [cumplimientoGeneral, setCumplimientoGeneral] = useState('--');
-const [calidadGeneral, setCalidadGeneral] = useState('--');
-const [actividadGeneral, setActividadGeneral] = useState('--');
-  
-  const [targetPromedio, setTargetPromedio] = useState(0);
-  useEffect(() => {
-
-  async function cargarRanking() {
-
-    const { data, error } = await supabase
-      .from('picking')
-.select('cancha, productividad, target, datos_originales');
-
-    if (error || !data?.length) return;
-const productividadPromedio =
-  data.reduce(
-    (a, r) => a + Number(r.productividad || 0),
-    0
-  ) / data.length;
-
-setProductividadGeneral(
-  productividadPromedio.toFixed(1)
-);
-
-setActividadGeneral(
-  data.length.toString()
-);
-    
-    const porcentajeCalidad =
-  data.length > 0
-    ? (
-        data.filter(r =>
-          Number(r.desvio || 0) === 0
-        ).length / data.length
-      ) * 100
-    : 0;
-
-setCalidadGeneral(
-  porcentajeCalidad.toFixed(1) + '%'
-);
-    const targetPromedioCalculado =
-  data.reduce(
-    (a, r) => a + Number(r.target || 0),
-    0
-  ) / data.length;
-
-setTargetPromedio(
-  targetPromedioCalculado
-);
-
-if (targetPromedioCalculado > 0) {
-
-  const cumplimiento =
-    (productividadPromedio /
-      targetPromedioCalculado) * 100;
-
-  setCumplimientoGeneral(
-    cumplimiento.toFixed(1) + '%'
-  );
-}
-    const operadores = {};
-
-    data.forEach(r => {
-
-      const nombre =
-        r.datos_originales?.operador || 'SIN NOMBRE';
-
-      if (!operadores[nombre]) {
-        operadores[nombre] = {
-          nombre,
-          total: 0,
-          cantidad: 0
-        };
-      }
-
-      operadores[nombre].total += Number(r.productividad || 0);
-      operadores[nombre].cantidad += 1;
-
-    });
-
-    const ranking = Object.values(operadores)
-      .map(o => ({
-        ...o,
-        promedio: o.total / o.cantidad
-      }))
-      .sort((a, b) => b.promedio - a.promedio);
-
-    if (ranking[0])
-      setMejorOperador(ranking[0].nombre);
-
-    if (ranking[1])
-      setSegundoOperador(ranking[1].nombre);
-
-    if (ranking[ranking.length - 1])
-      setRequiereAtencion(
-        ranking[ranking.length - 1].nombre
-      );
-
-    const canchas = {};
-
-    data.forEach(r => {
-
-      const cancha = r.cancha || 'SIN CANCHA';
-
-      if (!canchas[cancha]) {
-        canchas[cancha] = {
-          cancha,
-          total: 0,
-          cantidad: 0
-        };
-      }
-
-      canchas[cancha].total +=
-        Number(r.productividad || 0);
-
-      canchas[cancha].cantidad += 1;
-
-    });
-
-    const rankingCanchas =
-      Object.values(canchas)
-        .map(c => ({
-          ...c,
-          promedio: c.total / c.cantidad
-        }))
-        .sort((a, b) => b.promedio - a.promedio);
-
-    if (rankingCanchas[0])
-      setMejorCancha(rankingCanchas[0].cancha);
-
-  }
-
-  cargarRanking();
-
-}, []);
-  return (
-    <section className="panel people-analysis">
-
-      <div className="analysis-title">
-        <div>
-          <small>INTELIGENCIA OPERATIVA</small>
-          <h2>Centro de Control</h2>
-          <p>
-            Productividad, calidad, errores y desempeño general.
-          </p>
-        </div>
-      </div>
-
-      <div className="analysis-filters">
-        <label>
-          Período
-          <select
-            value={periodo}
-            onChange={e => setPeriodo(e.target.value)}
-          >
-            <option value="dia">Día</option>
-            <option value="semana">Semana</option>
-            <option value="quincena">Quincena</option>
-            <option value="mes">Mes</option>
-            <option value="anio">Año</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="analysis-kpis">
-
-        <div>
-          <span>📈 PRODUCTIVIDAD</span>
-         <b>{productividadGeneral}</b>
-          <small>Productividad general</small>
-        </div>
-
-        <div>
-          <span>🎯 CUMPLIMIENTO</span>
-        <b>{cumplimientoGeneral}</b>
-          <small>Cumplimiento general</small>
-        </div>
-
-        <div>
-          <span>✅ CALIDAD</span>
-          <b>{calidadGeneral}</b>
-          <small>Error % general</small>
-        </div>
-
-        <div>
-          <span>📦 ACTIVIDAD</span>
-          <b>{actividadGeneral}</b>
-          <small>Packs y pallets</small>
-        </div>
-
-      </div>
-
-      <div className="analysis-kpis">
-
-  <div>
-    <span>🏆 MEJOR OPERADOR</span>
-<b>{mejorOperador}</b>
-    <small>Mayor productividad</small>
-  </div>
-
-  <div>
-    <span>🥈 SEGUNDO OPERADOR</span>
-<b>{segundoOperador}</b>
-    <small>Segundo mejor rendimiento</small>
-  </div>
-
-  <div>
-    <span>🚨 REQUIERE ATENCIÓN</span>
-<b>{requiereAtencion}</b>
-``
-    <small>Mayor porcentaje de error</small>
-  </div>
-
-  <div>
-    <span>🎯 MEJOR CANCHA</span>
-<b>{mejorCancha}</b>
-    <small>Mayor rendimiento</small>
-  </div>
-
-</div>
-
-      <div className="analysis-nav">
-
-  <button
-    className={tab === 'dashboard' ? 'sel' : ''}
-    onClick={() => setTab('dashboard')}
-  >
-    Dashboard
-  </button>
-
-  <button
-    className={tab === 'rankings' ? 'sel' : ''}
-    onClick={() => setTab('rankings')}
-  >
-    Rankings
-  </button>
-
-  <button
-    className={tab === 'adn' ? 'sel' : ''}
-    onClick={() => setTab('adn')}
-  >
-    ADN Operativo
-  </button>
-
-  <button
-    className={tab === 'calidad' ? 'sel' : ''}
-    onClick={() => setTab('calidad')}
-  >
-    Calidad
-  </button>
-
-  <button
-    className={tab === 'canchas' ? 'sel' : ''}
-    onClick={() => setTab('canchas')}
-  >
-    Canchas
-  </button>
-
-  <button
-    className={tab === 'alertas' ? 'sel' : ''}
-    onClick={() => setTab('alertas')}
-  >
-    Alertas
-  </button>
-
-</div>
-{tab === 'rankings' && (
-  <section className="panel">
-
-    <h2>🏆 Rankings</h2>
-
-    <div className="analysis-kpis">
-
-      <div>
-        <span>🥇 TOP 1</span>
-        <b>{mejorOperador}</b>
-        <small>Mayor productividad</small>
-      </div>
-
-      <div>
-        <span>🥈 TOP 2</span>
-        <b>{segundoOperador}</b>
-        <small>Segundo mejor rendimiento</small>
-      </div>
-
-      <div>
-        <span>🚨 ATENCIÓN</span>
-        <b>{requiereAtencion}</b>
-        <small>Menor rendimiento</small>
-      </div>
-
-      <div>
-        <span>🎯 MEJOR CANCHA</span>
-        <b>{mejorCancha}</b>
-        <small>Mayor productividad</small>
-      </div>
-
-    </div>
-
-    <div className="scroll">
-
-      <table>
-
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Operador</th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          {rankingOperadores.map((op, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{op}</td>
-            </tr>
-          ))}
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-  </section>
-)}
-      {tab === 'adn' && (
-  <section className="panel">
-    <h2>🧬 ADN Operativo</h2>
-
-    <div className="analysis-kpis">
-
-      <div>
-        <span>🏆 OPERADOR TOP</span>
-        <b>{mejorOperador}</b>
-        <small>Mayor productividad promedio</small>
-      </div>
-
-      <div>
-        <span>📈 PRODUCTIVIDAD</span>
-        <b>{productividadGeneral}</b>
-        <small>Productividad promedio</small>
-      </div>
-
-      <div>
-        <span>🎯 CUMPLIMIENTO</span>
-        <b>{cumplimientoGeneral}</b>
-        <small>Cumplimiento general</small>
-      </div>
-
-      <div>
-        <span>✅ CALIDAD</span>
-        <b>{calidadGeneral}</b>
-        <small>Calidad general</small>
-      </div>
-
-    </div>
-
-    <div className="scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Indicador</th>
-            <th>Resultado</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td>Mejor Operador</td>
-            <td>{mejorOperador}</td>
-          </tr>
-
-          <tr>
-            <td>Segundo Operador</td>
-            <td>{segundoOperador}</td>
-          </tr>
-
-          <tr>
-            <td>Requiere Atención</td>
-            <td>{requiereAtencion}</td>
-          </tr>
-
-          <tr>
-            <td>Mejor Cancha</td>
-            <td>{mejorCancha}</td>
-          </tr>
-
-          <tr>
-            <td>Productividad General</td>
-            <td>{productividadGeneral}</td>
-          </tr>
-
-          <tr>
-            <td>Cumplimiento</td>
-            <td>{cumplimientoGeneral}</td>
-          </tr>
-
-          <tr>
-            <td>Calidad</td>
-            <td>{calidadGeneral}</td>
-          </tr>
-
-          <tr>
-            <td>Actividad</td>
-            <td>{actividadGeneral}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-)}
-      {tab === 'dashboard' && (
-<div className="executive-grid">
-
-        <section>
-          <h3>🔥 Insights</h3>
-
-<div className="trend-row">
-  <span>Mejor productividad</span>
-  <b>{mejorOperador}</b>
-</div>
-
-<div className="trend-row">
-  <span>Mejor calidad</span>
-  <b>{calidadGeneral}</b>
-</div>
-
-<div className="trend-row">
-  <span>Mayor tasa de error</span>
-  <b>{requiereAtencion}</b>
-</div>
-
-</section>
-
-        <section>
-          <h3>🚨 Alertas</h3>
-
-          <div className="trend-row">
-            <span>Error superior a 1%</span>
-<b>{calidadGeneral}</b>
-          </div>
-
-          <div className="trend-row">
-            <span>Debajo del target</span>
-<b>{cumplimientoGeneral}</b>
-          </div>
-
-          <div className="trend-row">
-            <span>Caída de productividad</span>
-<b>{requiereAtencion}</b>
-          </div>
-        </section>
-
-      </div>
-)}
-    </section>
-  );
+// Reemplaza los datos de un módulo para un mes/año: busca o crea el período, registra la importación,
+// borra lo publicado antes en esas tablas, inserta las filas nuevas y marca todo como publicado.
+async function publicarPeriodo({anio,mes,tipo,archivo,hoja,conteos,tablas,perfilId}){
+ let{data:period,error}=await supabase.from('periodos').select('*').eq('anio',anio).eq('mes',mes).maybeSingle();if(error)throw error;
+ if(!period){const r=await supabase.from('periodos').insert({anio,mes,publicado:false}).select().single();if(r.error)throw r.error;period=r.data}
+ const ir=await supabase.from('importaciones').insert({periodo_id:period.id,tipo_archivo:tipo,nombre_archivo:archivo,hoja_origen:hoja,...conteos,estado:'procesando',cargado_por:perfilId}).select().single();if(ir.error)throw ir.error;
+ for(const[tabla]of tablas){const del=await supabase.from(tabla).delete().eq('periodo_id',period.id);if(del.error)throw del.error}
+ for(const[tabla,filas]of tablas)if(filas.length)await insertarLotes(tabla,filas.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));
+ const imp=await supabase.from('importaciones').update({estado:'publicado',publicado_en:new Date().toISOString()}).eq('id',ir.data.id);if(imp.error)throw imp.error;
+ const up=await supabase.from('periodos').update({publicado:true,publicado_en:new Date().toISOString(),publicado_por:perfilId}).eq('id',period.id);if(up.error)throw up.error;
 }
 function GestionUsuarios(){const[empleados,setEmpleados]=useState([]),[buscar,setBuscar]=useState(''),[clave,setClave]=useState('quilmes'),[busy,setBusy]=useState(false),[mensaje,setMensaje]=useState('');async function cargar(){const{data,error}=await supabase.from('empleados').select('id,legajo,apellido_nombre,turno,tarea,estado,activo').order('apellido_nombre');if(error)setMensaje(error.message);else setEmpleados(data||[])}useEffect(()=>{cargar()},[]);async function ejecutar(body){setBusy(true);setMensaje('Procesando...');const{data,error}=await supabase.functions.invoke('gestion-usuarios',{body});if(error)setMensaje(`No se pudo completar: ${error.message}`);else if(data?.error)setMensaje(`No se pudo completar: ${data.error}`);else setMensaje(data?.mensaje||`Proceso terminado. Creados: ${data?.creados||0} · Existentes: ${data?.existentes||0} · Errores: ${data?.errores||0}`);setBusy(false);return data}async function crear(e){await ejecutar({accion:'crear_usuario',legajo:String(e.legajo),password:clave})}async function resetear(e){if(!window.confirm(`¿Restablecer la contraseña de ${e.apellido_nombre}?`))return;await ejecutar({accion:'restablecer_password',legajo:String(e.legajo),password:clave})}async function acceso(e,habilitar){if(!window.confirm(`¿${habilitar?'Habilitar':'Deshabilitar'} el acceso de ${e.apellido_nombre}?`))return;await ejecutar({accion:'cambiar_acceso',legajo:String(e.legajo),habilitar})}async function crearActivos(){if(!window.confirm('Se crearán o vincularán las cuentas de todo el personal activo. ¿Continuar?'))return;await ejecutar({accion:'crear_activos',password:clave})}const q=normal(buscar),lista=empleados.filter(e=>!q||normal(e.apellido_nombre).includes(q)||String(e.legajo).includes(buscar.trim()));return <section className="panel users-admin"><div className="users-title"><div><small>GESTIÓN DE ACCESOS</small><h2>Usuarios del personal</h2><p>Crear cuentas, restablecer contraseñas y administrar accesos.</p></div><button className="primary compact" onClick={crearActivos} disabled={busy}>Crear accesos del personal activo</button></div><div className="users-controls"><div><label>Buscar por legajo o nombre</label><input value={buscar} onChange={e=>setBuscar(e.target.value)} placeholder="Ej.: 29025727 o FOLETTO"/></div><div><label>Contraseña para crear o restablecer</label><input type="text" value={clave} onChange={e=>setClave(e.target.value)} minLength="6"/></div></div>{mensaje&&<div className="notice"><AlertTriangle/>{mensaje}</div>}<div className="scroll users-table"><table><thead><tr>{['Legajo','Nombre','Turno','Tarea','Estado','Acciones'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{lista.map(e=><tr key={e.id}><td><b>{e.legajo}</b></td><td>{e.apellido_nombre}</td><td>{e.turno}</td><td>{e.tarea}</td><td><span className={`user-state ${e.activo?'active':'inactive'}`}>{e.estado}</span></td><td><div className="user-actions"><button onClick={()=>crear(e)} disabled={busy}>Crear/vincular</button><button onClick={()=>resetear(e)} disabled={busy}>Resetear clave</button><button onClick={()=>acceso(e,true)} disabled={busy}>Habilitar</button><button className="danger" onClick={()=>acceso(e,false)} disabled={busy}>Deshabilitar</button></div></td></tr>)}</tbody></table></div><p className="note">Las personas suspendidas permanecen en la nómina y conservan sus datos históricos. El acceso se administra por separado.</p></section>}
 function Admin({profile}){
@@ -526,7 +66,7 @@ function Admin({profile}){
   if(!file)return setMsg('Seleccioná un archivo Excel.');setBusy(true);setMsg('Procesando el archivo. Puede demorar unos segundos...');setReview(null);await new Promise(r=>setTimeout(r,80));
   try{
    if(!['picking','manual','gatera','voice'].includes(type))throw new Error('La publicación real está habilitada para los cuatro módulos.');
-   const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:false,cellNF:false,cellHTML:false});
+   XLSX??=await import('xlsx');const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:false,cellNF:false,cellHTML:false});
    if(type==='manual'){
     const ws=wb.Sheets['Carga Datos'];if(!ws)throw new Error('No se encontró la hoja Carga Datos.');
     const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
@@ -587,94 +127,32 @@ function Admin({profile}){
    setReview({valid,unknown:[...unknown.values()],discarded,duplicates,read:matrix.length-hi-1});setMsg('Vista previa terminada. Revisá los resultados antes de publicar.');
   }catch(e){setMsg(`No se pudo revisar: ${e.message}`)}finally{setBusy(false)}
  }
- async function publish(){if(!review?.valid.length&&!review?.special?.length)return;setBusy(true);setMsg('Publicando y reemplazando la versión anterior...');try{
+ async function publish(){if(!review?.valid.length&&!review?.special?.length)return;setBusy(true);setMsg('Publicando y reemplazando la versión anterior...');invalidarDatosAnalisis();try{
+  const mm=String(month).padStart(2,'0'),conteos={registros_encontrados:review.read,registros_aceptados:review.valid.length+(review.special?.length||0),registros_rechazados:review.unknown.length+review.discarded,registros_duplicados:review.duplicates};
   if(review.tipo==='voice'){
-   let{data:period,error}=await supabase.from('periodos').select('*').eq('anio',year).eq('mes',month).maybeSingle();if(error)throw error;if(!period){const r=await supabase.from('periodos').insert({anio:year,mes:month,publicado:false}).select().single();if(r.error)throw r.error;period=r.data}const ir=await supabase.from('importaciones').insert({periodo_id:period.id,tipo_archivo:'errores_voice',nombre_archivo:file.name,hoja_origen:'ArchiveWorkUnit',registros_encontrados:review.read,registros_aceptados:review.valid.length,registros_rechazados:review.unknown.length+review.discarded,registros_duplicados:review.duplicates,estado:'procesando',cargado_por:profile.id}).select().single();if(ir.error)throw ir.error;const del=await supabase.from('errores_voice').delete().eq('periodo_id',period.id);if(del.error)throw del.error;await insertarLotes('errores_voice',review.valid.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));await supabase.from('importaciones').update({estado:'publicado',publicado_en:new Date().toISOString()}).eq('id',ir.data.id);await supabase.from('periodos').update({publicado:true,publicado_en:new Date().toISOString(),publicado_por:profile.id}).eq('id',period.id);setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} verificaciones de Voice Picking de ${String(month).padStart(2,'0')}/${year}, sin duplicar.`);return;
+   await publicarPeriodo({anio:year,mes:month,tipo:'errores_voice',archivo:file.name,hoja:'ArchiveWorkUnit',conteos,tablas:[['errores_voice',review.valid]],perfilId:profile.id});
+   setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} verificaciones de Voice Picking de ${mm}/${year}, sin duplicar.`);return;
   }
   if(review.tipo==='gatera'){
-   let{data:period,error}=await supabase.from('periodos').select('*').eq('anio',year).eq('mes',month).maybeSingle();if(error)throw error;if(!period){const r=await supabase.from('periodos').insert({anio:year,mes:month,publicado:false}).select().single();if(r.error)throw r.error;period=r.data}
-   const ir=await supabase.from('importaciones').insert({periodo_id:period.id,tipo_archivo:'errores_gatera',nombre_archivo:file.name,hoja_origen:review.sheet,registros_encontrados:review.read,registros_aceptados:review.valid.length+(review.special?.length||0),registros_rechazados:review.unknown.length+review.discarded,registros_duplicados:review.duplicates,estado:'procesando',cargado_por:profile.id}).select().single();if(ir.error)throw ir.error;const del=await supabase.from('errores_gatera').delete().eq('periodo_id',period.id);if(del.error)throw del.error;const delEspecial=await supabase.from('errores_gatera_especiales').delete().eq('periodo_id',period.id);if(delEspecial.error)throw delEspecial.error;await insertarLotes('errores_gatera',review.valid.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));if(review.special?.length)await insertarLotes('errores_gatera_especiales',review.special.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));await supabase.from('importaciones').update({estado:'publicado',publicado_en:new Date().toISOString()}).eq('id',ir.data.id);await supabase.from('periodos').update({publicado:true,publicado_en:new Date().toISOString(),publicado_por:profile.id}).eq('id',period.id);const especiales=review.special?.length||0;setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} errores asignados y ${especiales} registros administrativos especiales de ${String(month).padStart(2,'0')}/${year}, sin duplicar.`);return;
+   await publicarPeriodo({anio:year,mes:month,tipo:'errores_gatera',archivo:file.name,hoja:review.sheet,conteos,tablas:[['errores_gatera',review.valid],['errores_gatera_especiales',review.special||[]]],perfilId:profile.id});
+   setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} errores asignados y ${review.special?.length||0} registros administrativos especiales de ${mm}/${year}, sin duplicar.`);return;
   }
   if(review.tipo==='manual'){
    const meses=[...new Set(review.valid.map(x=>x.mes))].sort((a,b)=>a-b);let total=0;
    for(const mes of meses){
-    let{data:period,error}=await supabase.from('periodos').select('*').eq('anio',year).eq('mes',mes).maybeSingle();if(error)throw error;
-    if(!period){const r=await supabase.from('periodos').insert({anio:year,mes,publicado:false}).select().single();if(r.error)throw r.error;period=r.data}
     const filas=review.valid.filter(x=>x.mes===mes).map(({mes,...x})=>x);
-    const ir=await supabase.from('importaciones').insert({periodo_id:period.id,tipo_archivo:'clasificacion_manual',nombre_archivo:file.name,hoja_origen:'Carga Datos',registros_encontrados:filas.length,registros_aceptados:filas.length,registros_rechazados:0,registros_duplicados:0,estado:'procesando',cargado_por:profile.id}).select().single();if(ir.error)throw ir.error;
-    const del=await supabase.from('clasificacion_manual').delete().eq('periodo_id',period.id);if(del.error)throw del.error;
-    await insertarLotes('clasificacion_manual',filas.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));
-    await supabase.from('importaciones').update({estado:'publicado',publicado_en:new Date().toISOString()}).eq('id',ir.data.id);
-    const up=await supabase.from('periodos').update({publicado:true,publicado_en:new Date().toISOString(),publicado_por:profile.id}).eq('id',period.id);if(up.error)throw up.error;total+=filas.length;
+    await publicarPeriodo({anio:year,mes,tipo:'clasificacion_manual',archivo:file.name,hoja:'Carga Datos',conteos:{registros_encontrados:filas.length,registros_aceptados:filas.length,registros_rechazados:0,registros_duplicados:0},tablas:[['clasificacion_manual',filas]],perfilId:profile.id});
+    total+=filas.length;
    }
    setReview(null);setFile(null);setMsg(`Publicado: ${total} registros de Clasificación manual en ${meses.length} meses de ${year}, sin duplicar.`);return;
   }
-  let{data:period,error}=await supabase.from('periodos').select('*').eq('anio',year).eq('mes',month).maybeSingle();if(error)throw error;if(!period){const r=await supabase.from('periodos').insert({anio:year,mes:month,publicado:false}).select().single();if(r.error)throw r.error;period=r.data}
-  const ir=await supabase.from('importaciones').insert({periodo_id:period.id,tipo_archivo:'picking',nombre_archivo:file.name,hoja_origen:'Bajada General',registros_encontrados:review.read,registros_aceptados:review.valid.length,registros_rechazados:review.unknown.length+review.discarded,registros_duplicados:review.duplicates,estado:'procesando',cargado_por:profile.id}).select().single();if(ir.error)throw ir.error;
-  const del=await supabase.from('picking').delete().eq('periodo_id',period.id);if(del.error)throw del.error;await insertarLotes('picking',review.valid.map(x=>({...x,periodo_id:period.id,importacion_id:ir.data.id})));
-  await supabase.from('importaciones').update({estado:'publicado',publicado_en:new Date().toISOString()}).eq('id',ir.data.id);const up=await supabase.from('periodos').update({publicado:true,publicado_en:new Date().toISOString(),publicado_por:profile.id}).eq('id',period.id);if(up.error)throw up.error;
-  setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} registros. Picking ${String(month).padStart(2,'0')}/${year} fue reemplazado sin duplicar.`)
+  await publicarPeriodo({anio:year,mes:month,tipo:'picking',archivo:file.name,hoja:'Bajada General',conteos,tablas:[['picking',review.valid]],perfilId:profile.id});
+  setReview(null);setFile(null);setMsg(`Publicado: ${review.valid.length} registros. Picking ${mm}/${year} fue reemplazado sin duplicar.`)
  }catch(e){setMsg(`No se publicó. Detalle: ${e.message}`)}finally{setBusy(false)}}
  return <><Header profile={profile}/><main><div className="admin-top"><div><small>PANEL ADMINISTRADOR</small><h1>{section==='carga'?'Carga mensual':section==='analisis'?'Análisis del personal':'Gestión de accesos'}</h1></div><div className="admin-nav"><button className={section==='carga'?'sel':''} onClick={()=>setSection('carga')}><Upload/>Carga mensual</button><button className={section==='analisis'?'sel':''} onClick={()=>setSection('analisis')}><TrendingUp/>Análisis</button><button className={section==='usuarios'?'sel':''} onClick={()=>setSection('usuarios')}><ShieldCheck/>Accesos y claves</button></div></div>{section==='carga'&&<div className="admin-section"><div className="title"><small>PANEL ADMINISTRADOR</small><h1>Carga mensual</h1><p>La última carga válida reemplaza el mismo módulo, mes y año.</p></div><section className="panel admin"><label>Tipo de archivo</label>
 
-<div className="upload-type-buttons">
-
-  <button
-    type="button"
-    className={type === 'manual' ? 'active' : ''}
-    onClick={()=>{
-      setType('manual');
-      setFile(null);
-      setReview(null);
-      setMsg('');
-    }}
-  >
-    📦 Clasificación
-  </button>
-
-  <button
-    type="button"
-    className={type === 'picking' ? 'active' : ''}
-    onClick={()=>{
-      setType('picking');
-      setFile(null);
-      setReview(null);
-      setMsg('');
-    }}
-  >
-    📈 Picking
-  </button>
-
-  <button
-    type="button"
-    className={type === 'voice' ? 'active' : ''}
-    onClick={()=>{
-      setType('voice');
-      setFile(null);
-      setReview(null);
-      setMsg('');
-    }}
-  >
-    🎧 Errores Voice
-  </button>
-
-  <button
-    type="button"
-    className={type === 'gatera' ? 'active' : ''}
-    onClick={()=>{
-      setType('gatera');
-      setFile(null);
-      setReview(null);
-      setMsg('');
-    }}
-  >
-    ⚠️ Errores Gatera
-  </button>
-
-  <button type="button" className={type === 'autoelevador' ? 'active' : ''} onClick={()=>{setType('autoelevador');setFile(null);setReview(null);setMsg('')}}>🚜 Autoelevador</button>
-
-</div>
-{type==='autoelevador'?<AutoelevadorCarga/>:<>
-<div className="twocol"><div><label>Mes</label><input type="number" min="1" max="12" value={month} onChange={e=>setMonth(+e.target.value)}/></div><div><label>Año</label><input type="number" value={year} onChange={e=>setYear(+e.target.value)}/></div></div><label className="upload"><Upload/>Seleccionar Excel<input type="file" accept=".xlsx,.xls" onChange={e=>{setFile(e.target.files[0]);setReview(null);setMsg('')}}/></label>{file&&<p><b>{file.name}</b></p>}<button className="primary" onClick={inspect} disabled={busy}>{busy?'Procesando...':'Revisar archivo'}</button>{review&&<div className="notice"><div><b>Vista previa de {review.tipo==='manual'?'Clasificación manual':review.tipo==='gatera'?'Errores en gatera':review.tipo==='voice'?'Errores Voice Picking':'Picking'}</b><p>Filas leídas: {review.read}</p><p>Registros válidos: {review.valid.length}</p>{review.tipo==='gatera'&&<p>Registros administrativos especiales: {review.special?.length||0}</p>}{review.tipo==='voice'&&<p>Errores detectados: {fmt(review.totalErrores)}</p>}<p>Operarios no reconocidos: {review.unknown.length}</p><p>Duplicados internos: {review.duplicates}</p><p>Filas descartadas: {review.discarded}</p>{review.tipo==='manual'&&<div className="month-summary">{Object.entries(review.porMes||{}).map(([m,c])=><p key={m}><b>{nombreMes(Number(m))} {year}:</b> {c} registros</p>)}</div>}{review.unknown.length>0&&<p className="note">Pendientes: {review.unknown.slice(0,8).join(', ')}</p>}<button className="primary" onClick={publish} disabled={busy}>{review.tipo==='manual'?'Reemplazar y publicar todos los meses':'Reemplazar y publicar'}</button></div></div>}{msg&&<div className="notice"><AlertTriangle/>{msg}</div>}<p className="note">Publicación real habilitada para Clasificación, Picking, Voice y Gatera.</p></>} </section></div>}{section==='analisis'&&<AnalisisOperativoV3 profile={profile}/>}{section==='usuarios'&&<GestionUsuarios/>}</main></>
+<div className="upload-type-buttons">{TIPOS_CARGA.map(([id,label])=><button key={id} type="button" className={type===id?'active':''} onClick={()=>{setType(id);setFile(null);setReview(null);setMsg('')}}>{label}</button>)}</div>
+{type==='autoelevador'?<Suspense fallback={<Center text="Cargando..."/>}><AutoelevadorCarga/></Suspense>:<>
+<div className="twocol"><div><label>Mes</label><input type="number" min="1" max="12" value={month} onChange={e=>setMonth(+e.target.value)}/></div><div><label>Año</label><input type="number" value={year} onChange={e=>setYear(+e.target.value)}/></div></div><label className="upload"><Upload/>Seleccionar Excel<input type="file" accept=".xlsx,.xls" onChange={e=>{setFile(e.target.files[0]);setReview(null);setMsg('')}}/></label>{file&&<p><b>{file.name}</b></p>}<button className="primary" onClick={inspect} disabled={busy}>{busy?'Procesando...':'Revisar archivo'}</button>{review&&<div className="notice"><div><b>Vista previa de {review.tipo==='manual'?'Clasificación manual':review.tipo==='gatera'?'Errores en gatera':review.tipo==='voice'?'Errores Voice Picking':'Picking'}</b><p>Filas leídas: {review.read}</p><p>Registros válidos: {review.valid.length}</p>{review.tipo==='gatera'&&<p>Registros administrativos especiales: {review.special?.length||0}</p>}{review.tipo==='voice'&&<p>Errores detectados: {fmt(review.totalErrores)}</p>}<p>Operarios no reconocidos: {review.unknown.length}</p><p>Duplicados internos: {review.duplicates}</p><p>Filas descartadas: {review.discarded}</p>{review.tipo==='manual'&&<div className="month-summary">{Object.entries(review.porMes||{}).map(([m,c])=><p key={m}><b>{nombreMes(Number(m))} {year}:</b> {c} registros</p>)}</div>}{review.unknown.length>0&&<p className="note">Pendientes: {review.unknown.slice(0,8).join(', ')}</p>}<button className="primary" onClick={publish} disabled={busy}>{review.tipo==='manual'?'Reemplazar y publicar todos los meses':'Reemplazar y publicar'}</button></div></div>}{msg&&<div className="notice"><AlertTriangle/>{msg}</div>}<p className="note">Publicación real habilitada para Clasificación, Picking, Voice y Gatera.</p></>} </section></div>}{section==='analisis'&&<Suspense fallback={<Center text="Cargando análisis..."/>}><AnalisisOperativoV3 profile={profile}/></Suspense>}{section==='usuarios'&&<GestionUsuarios/>}</main></>
 }
 createRoot(document.getElementById('root')).render(<App/>);
