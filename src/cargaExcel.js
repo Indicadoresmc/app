@@ -20,6 +20,7 @@ async function publicarPeriodo({anio,mes,tipo,archivo,hoja,conteos,tablas,perfil
 }
 // Lee el Excel y devuelve la vista previa (no escribe nada en la base).
 export async function revisarExcel(tipo,file,year,month){
+  if(tipo==='logueo')return(await import('./logueoAE')).revisarLogueo(file);
    if(!['picking','manual','gatera','voice'].includes(tipo))throw new Error('La publicación real está habilitada para los cuatro módulos.');
    XLSX??=await import('xlsx');const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:false,cellNF:false,cellHTML:false});
    if(tipo==='manual'){
@@ -79,9 +80,10 @@ export async function revisarExcel(tipo,file,year,month){
    for(const r of matrix.slice(hi+1)){const fecha=excelFecha(r[iFecha]),cancha=String(r[iCancha]||'').trim().toUpperCase(),nombre=String(r[iOper]||'').trim(),packs=Number(r[iPacks]||0),pallets=Number(r[iPallets]||0);if(!fecha||!nombre||!/^C[1-6]$/.test(cancha)||packs<=0){discarded++;continue}const[y,m]=fecha.split('-').map(Number);if(y!==year||m!==month){discarded++;continue}const emp=byName.get(normal(nombre));if(!emp){unknown.set(normal(nombre),nombre);continue}const inicio=hora(r[iInicio]),fin=hora(r[iFin]),key=[emp.id,fecha,cancha,inicio,fin,packs,pallets].join('|');if(seen.has(key)){duplicates++;continue}seen.add(key);valid.push({empleado_id:emp.id,fecha,turno:String(r[iTurno]||''),cancha,packs,pallets,inicio,fin,duracion_segundos:segundos(r[iDur]),tiempo_neto_segundos:segundos(r[iNeto]),tiempo_sin_picking_segundos:segundos(r[iSin]),productividad:Number(r[iProd]||0),target:Number(r[iTarget]||0),desvio:Number(r[iDes]||0),num_color:Number(r[iColor]||0),datos_originales:{operador:nombre}})}
    return {valid,unknown:[...unknown.values()],discarded,duplicates,read:matrix.length-hi-1};
 }
-export const MENSAJE_REVISION={manual:'Vista previa anual terminada. Revisá los meses detectados antes de publicar.',voice:'Vista previa de Errores Voice Picking terminada. Revisá antes de publicar.',gatera:'Vista previa de Errores en gatera terminada. Revisá antes de publicar.',picking:'Vista previa terminada. Revisá los resultados antes de publicar.'};
+export const MENSAJE_REVISION={logueo:'Vista previa del Control de logueo AE terminada. Revisá antes de publicar.',manual:'Vista previa anual terminada. Revisá los meses detectados antes de publicar.',voice:'Vista previa de Errores Voice Picking terminada. Revisá antes de publicar.',gatera:'Vista previa de Errores en gatera terminada. Revisá antes de publicar.',picking:'Vista previa terminada. Revisá los resultados antes de publicar.'};
 // Publica una vista previa y devuelve el mensaje de resultado.
 export async function publicarRevision(review,{archivo,year,month,perfilId}){
+  if(review.tipo==='logueo')return(await import('./logueoAE')).publicarLogueo(review,{archivo});
   const mm=String(month).padStart(2,'0'),conteos={registros_encontrados:review.read,registros_aceptados:review.valid.length+(review.special?.length||0),registros_rechazados:review.unknown.length+review.discarded,registros_duplicados:review.duplicates};
   if(review.tipo==='voice'){
    await publicarPeriodo({anio:year,mes:month,tipo:'errores_voice',archivo,hoja:'ArchiveWorkUnit',conteos,tablas:[['errores_voice',review.valid]],perfilId});

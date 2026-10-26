@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { cargarDatosAnalisis, invalidarDatosAnalisis } from './datosAnalisis';
 import { BuscadorPreguntas } from './Buscador';
-import { Autoelevadores, ErroresDetalle, PickingTiempos, Clasificacion, CompararMesAnterior, Alertas, calcularAlertas, FichaExtra, EspecialesGatera, exportarExcel } from './AnalisisSecciones';
+import { LogueoAdmin, Autoelevadores, ErroresDetalle, PickingTiempos, Clasificacion, CompararMesAnterior, Alertas, calcularAlertas, FichaExtra, EspecialesGatera, exportarExcel } from './AnalisisSecciones';
 
 import { MIN_DIAS, TARGET_GENERAL, TARGET_CANCHA, MESES, n, txt, norm, fmt, pct, iso, fechaAR, turnoCanon, nombreTurno, operadorKey, diasUnicos, suma, paletas, bultos, productividad, targetCancha, noEsError, paletaId, tipoAdministrativo, esAdministrativo, skuEtiqueta, resumen, Card, Empty, Pill, aplicarTargets } from './analisisUtil';
 
@@ -135,6 +135,7 @@ export default function AnalisisOperativoV3({profile,tab:tabExterno,setTab:setTa
   {tab==='tiempos'&&<PickingTiempos ctx={ctx}/>}
   {tab==='clasificacion'&&<Clasificacion ctx={ctx}/>}
   {tab==='autoelevadores'&&<Autoelevadores ctx={ctx}/>}
+  {tab==='logueo'&&<LogueoAdmin ctx={ctx}/>}
   {tab==='alertas'&&<Alertas ctx={ctx} operadores={operadores} calc={alertas}/>}
   {tab==='devoluciones'&&<BandejaDevoluciones/>}
   </main></div></section>;
