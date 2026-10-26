@@ -10,7 +10,8 @@ const TIPOS=[
  ['picking','📈 Picking','El del mes (hoja Bajada General).'],
  ['voice','🎧 Errores Voice','El del mes (hoja ArchiveWorkUnit).'],
  ['gatera','⚠️ Errores Gatera','El del mes (hoja con el nombre del mes).'],
- ['autoelevador','🚜 Autoelevador','El del mes.']
+ ['autoelevador','🚜 Autoelevador','El del mes.'],
+ ['logueo','⏱️ Logueo AE','Control de logueo (hoja Control_Diario).']
 ];
 const NOMBRE=Object.fromEntries(TIPOS.map(([id,label])=>[id,label]));
 const disponible=typeof window!=='undefined'&&typeof window.showOpenFilePicker==='function'&&(()=>{try{return window.self===window.top}catch{return false}})();
@@ -22,7 +23,7 @@ const fechaHora=ms=>new Date(ms).toLocaleString('es-AR',{dateStyle:'short',timeS
 
 function Resumen({tipo,r,year}){
  if(tipo==='autoelevador')return <><p>Turnos: {r.turnos.join(', ')||'—'} · Resúmenes mensuales: {r.mensuales.length} · Días: {r.diarios.length} · Pausas: {r.pausas.length} · Horarios: {r.horarios.length}</p><p>Operadores no vinculados: {r.unknown.length}</p>{r.unknown.length>0&&<p className="note">Pendientes: {r.unknown.join(', ')}</p>}</>;
- return <><p>Filas leídas: {r.read} · Registros válidos: {r.valid.length}{tipo==='gatera'&&<> · Administrativos especiales: {r.special?.length||0}</>}{tipo==='voice'&&<> · Errores detectados: {r.totalErrores}</>}</p><p>Operarios no reconocidos: {r.unknown.length} · Duplicados internos: {r.duplicates} · Filas descartadas: {r.discarded}</p>{tipo==='manual'&&<p>{Object.entries(r.porMes||{}).map(([m,c])=>`${m}/${year}: ${c}`).join(' · ')}</p>}{r.unknown.length>0&&<p className="note">Pendientes: {r.unknown.join(', ')}</p>}</>;
+ return <><p>Filas leídas: {r.read} · Registros válidos: {r.valid.length}{tipo==='gatera'&&<> · Administrativos especiales: {r.special?.length||0}</>}{tipo==='voice'&&<> · Errores detectados: {r.totalErrores}</>}</p><p>Operarios no reconocidos: {r.unknown.length} · Duplicados internos: {r.duplicates} · Filas descartadas: {r.discarded}</p>{tipo==='manual'&&<p>{Object.entries(r.porMes||{}).map(([m,c])=>`${m}/${year}: ${c}`).join(' · ')}</p>}{tipo==='logueo'&&<p>Días: {r.desde?.split('-').reverse().join('/')} al {r.hasta?.split('-').reverse().join('/')} · Premiación: {r.mensual.length}</p>}{r.unknown.length>0&&<p className="note">Pendientes: {r.unknown.join(', ')}</p>}</>;
 }
 
 export default function ExcelVinculados({profile}){
