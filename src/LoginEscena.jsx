@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState}from'react';
 import{supabase}from'./supabase';
-import escudo from'./escudo.png';
+import escudo from'./escudo-1.png';
 import'./login-escena.css';
 
 const MIN_CARGA=1100,SALIDA=1500,FINAL=900;
