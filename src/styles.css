@@ -99,3 +99,9 @@
 .carga-manual{margin-top:4px}.carga-manual>summary{cursor:pointer;font-weight:900;font-size:16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;display:inline-block;margin-bottom:12px}
 .carga-manual[open]>summary{background:#000;color:#ffc000;border-color:#000}
 .menu-badge{margin-left:auto;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#c62828;color:#fff;font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}
+/* Buscador del Asistente */
+.buscador-form{display:flex;gap:10px;margin:8px 0}.buscador-form input{flex:1;margin:0}.buscador-form .primary{width:auto;padding:0 24px;margin:0}
+.buscador-ejemplos{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.buscador-ejemplos button{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+.buscador-res{margin-top:12px;border-top:1px solid #eee;padding-top:10px}.buscador-entendido{display:inline-block;background:#f3f4f6;border-radius:8px;padding:6px 10px;font-size:13px;color:#374151}
+@media(max-width:560px){.buscador-form{flex-direction:column}.buscador-form .primary{padding:12px}}
+.buscador-entendido{max-width:100%}
