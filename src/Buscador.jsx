@@ -8,7 +8,7 @@ import { tipoError } from './AnalisisSecciones';
 
 const MES_NOMBRE = { ENERO:1, FEBRERO:2, MARZO:3, ABRIL:4, MAYO:5, JUNIO:6, JULIO:7, AGOSTO:8, SEPTIEMBRE:9, SETIEMBRE:9, OCTUBRE:10, NOVIEMBRE:11, DICIEMBRE:12 };
 // Palabras que nunca se toman como parte de un nombre.
-const RESERVADAS = new Set(['QUIEN','QUIENES','QUE','CUAL','CUALES','COMO','CUANTO','CUANTOS','CUANTAS','DONDE','DE','DEL','LA','LAS','EL','LOS','EN','Y','O','A','AL','CON','POR','PARA','MAS','MENOS','MEJOR','MEJORES','PEOR','PEORES','TOP','RANKING','MAYOR','MENOR','TUVO','TIENE','HIZO','ESTA','ESTE','ESE','ESA','SEMANA','MES','ANO','ANIO','HOY','AYER','PASADO','PASADA','ANTERIOR','BAJO','BAJOS','BAJA','BAJAS','ALTO','ALTOS','ALTA','ALTAS','NECESITA','NECESITAN','REVISION','REVISAR','ULTIMO','ULTIMA','ULTIMOS','ULTIMAS','DIAS','DIA','QUINCENA','TURNO','TARDE','NOCHE','CANCHA','CANCHAS','ERROR','ERRORES','PRODUCTIVIDAD','CALIDAD','PALETAS','BULTOS','CUMPLIMIENTO','CLASIFICACION','AUTOELEVADOR','AUTOELEVADORES','SKU','PRODUCTO','PRODUCTOS','FALTANTE','FALTANTES','SOBRANTE','SOBRANTES','SABOR','CAMBIO','VS','CONTRA','COMPARAR','COMPARACION','RESUMEN','DATOS','OPERADOR','OPERADORES','PICKERO','PICKEROS','RINDE','RINDIO','RENDIMIENTO','TRABAJO','TRABAJADOS','GENERAL','TOTAL','TODOS', ...Object.keys(MES_NOMBRE)]);
+const RESERVADAS = new Set(['QUIEN','QUIENES','QUE','CUAL','CUALES','COMO','CUANTO','CUANTOS','CUANTAS','DONDE','DE','DEL','LA','LAS','EL','LOS','EN','Y','O','A','AL','CON','POR','PARA','MAS','MENOS','MEJOR','MEJORES','PEOR','PEORES','TOP','RANKING','MAYOR','MENOR','TUVO','TIENE','HIZO','ESTA','ESTE','ESE','ESA','SEMANA','MES','ANO','ANIO','HOY','AYER','PASADO','PASADA','ANTERIOR','BAJO','BAJOS','BAJA','BAJAS','ALTO','ALTOS','ALTA','ALTAS','NECESITA','NECESITAN','REVISION','REVISAR','ULTIMO','ULTIMA','ULTIMOS','ULTIMAS','DIAS','DIA','QUINCENA','TURNO','MANANA','TARDE','NOCHE','CANCHA','CANCHAS','ERROR','ERRORES','PRODUCTIVIDAD','CALIDAD','PALETAS','BULTOS','CUMPLIMIENTO','CLASIFICACION','AUTOELEVADOR','AUTOELEVADORES','SKU','PRODUCTO','PRODUCTOS','FALTANTE','FALTANTES','SOBRANTE','SOBRANTES','SABOR','CAMBIO','VS','CONTRA','COMPARAR','COMPARACION','RESUMEN','DATOS','OPERADOR','OPERADORES','PICKERO','PICKEROS','RINDE','RINDIO','RENDIMIENTO','TRABAJO','TRABAJADOS','GENERAL','TOTAL','TODOS', ...Object.keys(MES_NOMBRE)]);
 
 const isoDe = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const sumarDias = (d, k) => { const x = new Date(d); x.setDate(x.getDate() + k); return x; };
@@ -71,7 +71,7 @@ export async function responderPregunta(texto, ctx){
   const periodo = interpretarPeriodo(q, palabras, texto);
   const enRango = periodo ? (r => { const f = iso(r.fecha); return f >= periodo.desde && f <= periodo.hasta; }) : ctx.enRango;
   const textoPeriodo = periodo ? periodo.texto : 'el período elegido en los filtros';
-  const turno = palabras.includes('TARDE') && !palabras.includes('NOCHE') ? 'TARDE' : palabras.includes('NOCHE') && !palabras.includes('TARDE') ? 'NOCHE' : '';
+  const turnosDichos = ['MANANA','TARDE','NOCHE'].filter(t => palabras.includes(t)), turno = turnosDichos.length === 1 ? turnosDichos[0] : '';
   const canchaM = q.match(/\bC(?:ANCHA)? ?([1-6])\b/), cancha = canchaM ? `C${canchaM[1]}` : '';
   const tema = interpretarTema(palabras, q);
   const { personas, claves } = buscarPersonas(palabras, empleados);
