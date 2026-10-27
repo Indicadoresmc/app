@@ -14,8 +14,8 @@ export const fmt = v => new Intl.NumberFormat('es-AR',{maximumFractionDigits:1})
 export const pct = v => `${n(v).toFixed(1)}%`;
 export const iso = v => txt(v).slice(0,10);
 export const fechaAR = v => { const [y,m,d]=iso(v).split('-'); return y&&m&&d?`${d}/${m}/${y}`:txt(v); };
-export const turnoCanon = v => { const t=norm(v); if(t.includes('NOCHE')||t==='TN'||t==='N')return'NOCHE'; if(t.includes('TARDE')||t==='TT'||t==='T')return'TARDE'; return t||'SIN TURNO'; };
-export const nombreTurno = v => turnoCanon(v)==='NOCHE'?'Noche':turnoCanon(v)==='TARDE'?'Tarde':txt(v);
+export const turnoCanon = v => { const t=norm(v); if(t.includes('NOCHE')||t==='TN'||t==='N')return'NOCHE'; if(t.includes('TARDE')||t==='TT'||t==='T')return'TARDE'; if(t.includes('MANANA'))return'MANANA'; return t||'SIN TURNO'; };
+export const nombreTurno = v => turnoCanon(v)==='NOCHE'?'Noche':turnoCanon(v)==='TARDE'?'Tarde':turnoCanon(v)==='MANANA'?'Mañana':txt(v);
 export const operadorKey = r => txt(r.empleado_id||r.legajo||r.datos_originales?.operador||'SIN OPERADOR');
 export const diasUnicos = rows => new Set(rows.map(r=>iso(r.fecha)).filter(Boolean)).size;
 export const suma = (rows,key) => rows.reduce((s,r)=>s+n(r[key]),0);
