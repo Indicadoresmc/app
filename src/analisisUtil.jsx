@@ -66,3 +66,16 @@ export function aplicarTargets(filas){
     if(tipo === 'CANCHA' && TARGET_CANCHA[a] && b) TARGET_CANCHA[a][b] = v;
   });
 }
+
+// Puntaje del ranking: 50% productividad (cumplimiento contra el target de su cancha) y 50% pocos errores (tasa de error).
+// Cada parte va de 0 a 100 comparando contra los demás operadores del mismo turno: 100 = el mejor del grupo, 0 = el más bajo.
+// El cumplimiento se limita a 150% para que un caso extremo no aplaste al resto.
+export function puntuarRanking(ops){
+  if(!ops.length) return [];
+  const c = ops.map(o => Math.min(o.cumplimiento, 150)), t = ops.map(o => o.tasaError);
+  const cMin = Math.min(...c), cMax = Math.max(...c), tMin = Math.min(...t), tMax = Math.max(...t);
+  return ops.map(o => { const ptsProd = cMax > cMin ? (Math.min(o.cumplimiento, 150) - cMin) / (cMax - cMin) * 100 : 100, ptsErr = tMax > tMin ? (tMax - o.tasaError) / (tMax - tMin) * 100 : 100;
+    return { ...o, ptsProd, ptsErr, puntaje: (ptsProd + ptsErr) / 2 }; })
+    .sort((a, b) => b.puntaje - a.puntaje || b.cumplimiento - a.cumplimiento || a.tasaError - b.tasaError)
+    .map((o, i) => ({ ...o, puesto: i + 1 }));
+}
