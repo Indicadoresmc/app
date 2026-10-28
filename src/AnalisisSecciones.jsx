@@ -398,3 +398,18 @@ export function LogueoAdmin({ ctx }){
     </section>
   </section>;
 }
+
+/* ===================== Auditoría: valores de turno de cada archivo ===================== */
+// Muestra qué trae la columna Turno de cada archivo en el período. Los valores que no se reconocen
+// como Mañana, Tarde o Noche no aparecen cuando se filtra por turno (sí con "Todos").
+export function TurnosAuditoria({ ctx }){
+  const filas = useMemo(() => {
+    const fuentes = [['Picking', ctx.picking.filter(ctx.enRango)], ['Errores Voice', ctx.errors.filter(e => e.__origen === 'VOICE' && ctx.enRango(e) && !noEsError(e))], ['Errores Gatera', ctx.errors.filter(e => e.__origen === 'GATERA' && ctx.enRango(e) && !noEsError(e))]];
+    return fuentes.flatMap(([f, rows]) => [...agrupar(rows, r => txt(r.turno) || '(vacío)').entries()].map(([valor, rs]) => { const c = turnoCanon(valor === '(vacío)' ? '' : valor); return { f, valor, cantidad: rs.length, total: rows.length, como: ['MANANA','TARDE','NOCHE'].includes(c) ? nombreTurno(c) : 'No reconocido' }; }).sort((a, b) => b.cantidad - a.cantidad));
+  }, [ctx.picking, ctx.errors, ctx.year, ctx.month, ctx.periodo, ctx.fecha]);
+  const malos = filas.filter(x => x.como === 'No reconocido').reduce((s, x) => s + x.cantidad, 0);
+  return <TablaDatos titulo="Turno informado en cada archivo" sub={malos ? `${malos} registros tienen un turno que no se reconoce: no aparecen al filtrar por Tarde o Noche, solo con "Todos".` : 'Todos los registros del período tienen un turno reconocido.'} archivo="Auditoria_turnos" data={filas} cols={[
+    { t:'Archivo', v:r => r.f }, { t:'Valor en el Excel', v:r => r.valor }, { t:'Registros', v:r => r.cantidad }, { t:'% del archivo', v:r => +(r.cantidad / Math.max(1, r.total) * 100).toFixed(1), f:pct },
+    { t:'Se toma como', v:r => r.como, f:v => v === 'No reconocido' ? <b style={{ color: '#c62828' }}>{v}</b> : v }
+  ]}/>;
+}

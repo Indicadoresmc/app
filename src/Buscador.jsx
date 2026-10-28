@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cargarTabla } from './datosAnalisis';
-import { MIN_DIAS, TARGET_CANCHA, MESES, n, txt, norm, fmt, pct, iso, fechaAR, turnoCanon, nombreTurno, operadorKey, diasUnicos, suma, noEsError, esAdministrativo, resumen, Card } from './analisisUtil';
+import { MIN_DIAS, TARGET_GENERAL, TARGET_CANCHA, MESES, n, txt, norm, fmt, pct, iso, fechaAR, turnoCanon, nombreTurno, operadorKey, diasUnicos, suma, noEsError, esAdministrativo, resumen, Card } from './analisisUtil';
 import { tipoError } from './AnalisisSecciones';
 
 // Buscador del Asistente: entiende preguntas escritas con palabras clave y responde
@@ -71,7 +71,8 @@ export async function responderPregunta(texto, ctx){
   const periodo = interpretarPeriodo(q, palabras, texto);
   const enRango = periodo ? (r => { const f = iso(r.fecha); return f >= periodo.desde && f <= periodo.hasta; }) : ctx.enRango;
   const textoPeriodo = periodo ? periodo.texto : 'el período elegido en los filtros';
-  const turnosDichos = ['MANANA','TARDE','NOCHE'].filter(t => palabras.includes(t)), turno = turnosDichos.length === 1 ? turnosDichos[0] : '';
+  // Si la pregunta no nombra un turno, se usa el del filtro de arriba (igual que el período).
+  const turnosDichos = ['MANANA','TARDE','NOCHE'].filter(t => palabras.includes(t)), turnoDeFiltro = !turnosDichos.length && ctx.turno, turno = turnosDichos.length === 1 ? turnosDichos[0] : turnoDeFiltro || '';
   const canchaM = q.match(/\bC(?:ANCHA)? ?([1-6])\b/), cancha = canchaM ? `C${canchaM[1]}` : '';
   const tema = interpretarTema(palabras, q);
   const { personas, claves } = buscarPersonas(palabras, empleados);
@@ -79,7 +80,7 @@ export async function responderPregunta(texto, ctx){
   const haciaAbajo = palabras.some(p => ['PEOR','PEORES','MENOS','MENOR','BAJO','BAJOS','BAJA','BAJAS','REVISION','REVISAR'].includes(p)), haciaArriba = palabras.some(p => ['ALTO','ALTOS','ALTA','ALTAS'].includes(p));
   const compararTurnos = palabras.includes('TARDE') && palabras.includes('NOCHE');
   const noEncontrado = claves.length && !personas.length ? `No encontré a nadie con: ${claves.join(', ')}` : '';
-  const entendido = [noEncontrado,personas.length === 1 && `Persona: ${personas[0].apellido_nombre}`, `Período: ${textoPeriodo}`, turno && `Turno: ${nombreTurno(turno)}`, cancha && `Cancha: ${cancha}`, tema && `Tema: ${tema}`].filter(Boolean);
+  const entendido = [noEncontrado,personas.length === 1 && `Persona: ${personas[0].apellido_nombre}`, `Período: ${textoPeriodo}`, turno && `Turno: ${nombreTurno(turno)}${turnoDeFiltro ? ' (del filtro)' : ''}`, cancha && `Cancha: ${cancha}`, tema && `Tema: ${tema}`].filter(Boolean);
 
   const delTurno = rows => !turno ? rows : rows.filter(r => turnoCanon(r.turno) === turno);
   const deCancha = rows => !cancha ? rows : rows.filter(r => txt(r.cancha).toUpperCase() === cancha);
@@ -138,7 +139,7 @@ export async function responderPregunta(texto, ctx){
 
   // ---------- Tarde vs noche ----------
   if(compararTurnos){
-    const fila = t => { const rs = P.filter(r => turnoCanon(r.turno) === t), es = E.filter(e => turnoCanon(e.turno) === t), r = resumen(rs, es, 0); return [nombreTurno(t), fmt(r.productividad), pct(r.cumplimiento), fmt(r.paletas), r.total, pct(r.calidad)]; };
+    const fila = t => { const rs = P.filter(r => turnoCanon(r.turno) === t), es = E.filter(e => turnoCanon(e.turno) === t), r = resumen(rs, es, TARGET_GENERAL[t] || 0); return [nombreTurno(t), fmt(r.productividad), pct(r.cumplimiento), fmt(r.paletas), r.total, pct(r.calidad)]; };
     return { entendido, titulo: `Turno tarde vs. noche · ${textoPeriodo}`, tabla: { heads: ['Turno', 'Productividad', 'Cumplimiento', 'Paletas', 'Errores', 'Calidad'], rows: [fila('TARDE'), fila('NOCHE')] } };
   }
 
@@ -164,7 +165,8 @@ export async function responderPregunta(texto, ctx){
   }
 
   // ---------- Resumen general (con o sin cancha) ----------
-  const r = resumen(P, E, 0), validos = E.filter(e => !noEsError(e));
+  // Mismo target que el Dashboard: general del turno, o el de la cancha si se pregunta por una.
+  const r = resumen(P, E, cancha && turno ? (TARGET_CANCHA[turno]?.[cancha] || 0) : cancha ? 0 : (turno ? (TARGET_GENERAL[turno] || 0) : TARGET_GENERAL.TODOS)), validos = E.filter(e => !noEsError(e));
   const tipos = [...validos.reduce((m, e) => m.set(tipoError(e), (m.get(tipoError(e)) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
   if(tema === 'errores' || cancha || entendido.length > 1)
     return { entendido, titulo: `Resumen${cancha ? ` de ${cancha}` : ''} · ${textoPeriodo}`, tarjetas: [['PRODUCTIVIDAD', fmt(r.productividad), `Cumplimiento ${pct(r.cumplimiento)}`], ['ERRORES REALES', r.total, `Voice ${r.voice} · Gatera ${r.gatera}`], ['CALIDAD', pct(r.calidad), `Tasa ${pct(r.tasaError)}`], ['PALETAS', fmt(r.paletas), `${r.dias} días`]],
