@@ -296,11 +296,22 @@ export function FichaExtra({ ctx, ficha }){
     <div className="analysis-kpis">
       <Card title="ERRORES POR TIPO" value={tipos.length ? tipos.map(([t, v]) => `${v} ${t.toLowerCase()}`).join(' · ') : 'Sin errores'}/>
       <Card title="CLASIFICACIÓN" value={clasif.length ? pct(c.cum) : 'Sin datos'} line1={clasif.length ? `${c.dias} días · resultado ${fmt(c.resultado)}` : 'No registra clasificación en el período'}/>
-      <Card title="AUTOELEVADOR" value={auto.length ? pct(auto.reduce((s, r) => s + n(r.rendimiento), 0) / auto.length) : 'Sin datos'} line1={auto.length ? `${diasUnicos(auto)} días · muerto ${hms(suma(auto, 'tiempo_muerto_segundos'))}` : 'No registra autoelevador en el período'}/>
+      <Card title="AUTOELEVADOR · RENDIMIENTO" value={auto.length ? pct(auto.reduce((s, r) => s + n(r.rendimiento), 0) / auto.length) : 'Sin datos'} line1={auto.length ? `${diasUnicos(auto)} días trabajados` : 'No registra autoelevador en el período'} line2={auto.length ? `Tiempo muerto: ${horasMin(suma(auto, 'tiempo_muerto_segundos'))}` : undefined}/>
       <Card title="LOGUEO AE" value={log.length ? pct(verdes / log.length * 100) : 'Sin datos'} line1={log.length ? `${verdes} de ${log.length} jornadas a horario` : 'No registra logueo en el período'} line2={log.length ? `Ocupada por el turno anterior: ${log.filter(r => (minutosOcupada(r.ultimo_uso, r.hora_esperada) ?? 0) > 0).length}` : undefined}/>
     </div>
+    {auto.length > 0 && <TablaDatos titulo="Autoelevador día por día" sub="Rendimiento y tiempos del Detalle Diario del Excel." archivo={`Autoelevador_${ficha.name}`} data={auto.slice().sort((a, b) => b.fecha.localeCompare(a.fecha))} cols={[
+      { t:'Fecha', v:r => fechaAR(r.fecha) }, { t:'Turno', v:r => r.turno }, { t:'Tiempo efectivo', v:r => horasMin(r.tiempo_efectivo_segundos) }, { t:'Tiempo muerto', v:r => horasMin(r.tiempo_muerto_segundos) }, { t:'Ralentí', v:r => horasMin(r.tiempo_ralenti_segundos) },
+      { t:'Horas netas', v:r => horasMin(r.horas_netas_segundos) }, { t:'Rendimiento', v:r => +n(r.rendimiento).toFixed(1), f:v => <b style={{ color: colorRend(v) }}>{pct(v)}</b> }
+    ]}/>}
+    {log.length > 0 && <TablaDatos titulo="Logueo AE día por día" sub="Máquina (turno anterior): a qué hora el turno anterior dejó la máquina; en rojo si la dejó después del horario." archivo={`Logueo_${ficha.name}`} data={log.slice().sort((a, b) => b.fecha.localeCompare(a.fecha))} cols={[
+      { t:'Fecha', v:r => fechaAR(r.fecha) }, { t:'Turno', v:r => r.turno }, { t:'Horario', v:r => txt(r.hora_esperada).slice(0, 5) }, { t:'Primer logueo', v:r => txt(r.primer_logueo).slice(0, 5), f:v => <b>{v}</b> },
+      { t:'Diferencia', v:r => r.minutos_diferencia, f:v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} min` },
+      { t:'Estado', v:r => textoSemaforo(r.semaforo), f:(v, r) => <span className="auto-status" style={{ background: colorSemaforo(r.semaforo), color: /^amarillo/i.test(r.semaforo || '') ? '#332800' : '#fff' }}>{v}</span> },
+      { t:'Máquina', v:r => r.ae_inicial || '—' }, { t:'Máquina (turno anterior)', v:r => r.ultimo_uso || '', f:(v, r) => <Ocupada ultimo={r.ultimo_uso} esperada={r.hora_esperada}/> }, { t:'Hora final', v:r => txt(r.hora_final).slice(0, 5) || '—' }
+    ]}/>}
   </section>;
 }
+const horasMin = v => { const m = Math.round(Math.max(0, n(v)) / 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
 
 /* ===================== Auditoría: registros especiales de Gatera ===================== */
 export function EspecialesGatera({ ctx }){
