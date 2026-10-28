@@ -285,16 +285,19 @@ function CalidadVelocidad({ operadores }){
 /* ===================== Ficha 360°: otros módulos del operador ===================== */
 export function FichaExtra({ ctx, ficha }){
   const [datos, error] = useTablas(['clasificacion_manual','autoelevador_diario'], ctx.version);
-  const id = ficha.employeeId;
+  const id = ficha.employeeId, [logueo, setLogueo] = useState([]);
+  useEffect(() => { cargarTabla('autoelevador_logueo').then(setLogueo).catch(() => setLogueo([])); }, [ctx.version]);
   const tipos = useMemo(() => [...agrupar(ficha.errors.filter(e => !noEsError(e)), tipoError).entries()].map(([t, rs]) => [t, rs.length]).sort((a, b) => b[1] - a[1]), [ficha]);
   if(!datos) return <Cargando error={error}/>;
   const clasif = delTurno(datos.clasificacion_manual.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno), c = resumenClasif(clasif);
   const auto = delTurno(datos.autoelevador_diario.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno);
+  const log = delTurno(logueo.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno), verdes = log.filter(r => /^verde/i.test(r.semaforo || '')).length;
   return <section className="panel"><h3>🧩 Otros módulos de {ficha.name}</h3>
     <div className="analysis-kpis">
       <Card title="ERRORES POR TIPO" value={tipos.length ? tipos.map(([t, v]) => `${v} ${t.toLowerCase()}`).join(' · ') : 'Sin errores'}/>
       <Card title="CLASIFICACIÓN" value={clasif.length ? pct(c.cum) : 'Sin datos'} line1={clasif.length ? `${c.dias} días · resultado ${fmt(c.resultado)}` : 'No registra clasificación en el período'}/>
       <Card title="AUTOELEVADOR" value={auto.length ? pct(auto.reduce((s, r) => s + n(r.rendimiento), 0) / auto.length) : 'Sin datos'} line1={auto.length ? `${diasUnicos(auto)} días · muerto ${hms(suma(auto, 'tiempo_muerto_segundos'))}` : 'No registra autoelevador en el período'}/>
+      <Card title="LOGUEO AE" value={log.length ? pct(verdes / log.length * 100) : 'Sin datos'} line1={log.length ? `${verdes} de ${log.length} jornadas a horario` : 'No registra logueo en el período'} line2={log.length ? `Ocupada por el turno anterior: ${log.filter(r => (minutosOcupada(r.ultimo_uso, r.hora_esperada) ?? 0) > 0).length}` : undefined}/>
     </div>
   </section>;
 }
