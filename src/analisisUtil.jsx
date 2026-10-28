@@ -49,7 +49,7 @@ export function resumen(rows, errorRows, targetFijo=0){
   return {rows,errorRows:validos,paletas:p,bultos:bultos(rows),dias:diasUnicos(rows),productividad:prod,target,cumplimiento,voice,gatera,total,paletasAfectadas,tasaError,calidad:p>0?Math.max(0,100-tasaError):null};
 }
 
-export const Card=({title,value,line1,line2})=><div style={{background:'#050505',color:'#fff',borderRadius:14,padding:16,display:'grid',gap:7,minWidth:0}}><small style={{color:'#ffd400',fontWeight:800}}>{title}</small><b style={{fontSize:28,lineHeight:1.05,overflowWrap:'anywhere'}}>{value}</b>{line1&&<small style={{lineHeight:1.35}}>{line1}</small>}{line2&&<small style={{lineHeight:1.35}}>{line2}</small>}</div>;
+export const Card=({title,value,line1,line2,info})=>{const ayuda=info??INFO_TARJETAS[title];return <div className={ayuda?'kpi-card con-info':'kpi-card'} tabIndex={ayuda?0:undefined} data-info={ayuda} style={{position:'relative',background:'#050505',color:'#fff',borderRadius:14,padding:16,display:'grid',gap:7,minWidth:0}}><small style={{color:'#ffd400',fontWeight:800}}>{title}{ayuda&&<span className="info-i" aria-label="Cómo se calcula">ⓘ</span>}</small><b style={{fontSize:28,lineHeight:1.05,overflowWrap:'anywhere'}}>{value}</b>{line1&&<small style={{lineHeight:1.35}}>{line1}</small>}{line2&&<small style={{lineHeight:1.35}}>{line2}</small>}</div>}
 export const Empty=({children='Sin datos para el período seleccionado.'})=><div className="notice">{children}</div>;
 export const Pill=({children,onClick,active=false})=><button onClick={onClick} style={{border:'1px solid #ddd',borderRadius:999,padding:'8px 12px',fontWeight:800,background:active?'#050505':'#fff',color:active?'#ffd400':'#111',cursor:'pointer'}}>{children}</button>;
 
@@ -79,3 +79,44 @@ export function puntuarRanking(ops){
     .sort((a, b) => b.puntaje - a.puntaje || b.cumplimiento - a.cumplimiento || a.tasaError - b.tasaError)
     .map((o, i) => ({ ...o, puesto: i + 1 }));
 }
+
+// Explicación de cada tarjeta del administrador: aparece al pasar el mouse o tocar la tarjeta.
+export const INFO_TARJETAS = {
+  'PRODUCTIVIDAD': 'Bultos por hora = total de bultos ÷ horas de picking (suma de la "Duración total" de las tareas del Excel de Picking). Si el Excel no trae duración, se usa el promedio de la columna Bultos/hora.\nCumplimiento = productividad ÷ target × 100. En el Dashboard se usa el target general del turno; en la ficha, el promedio del cumplimiento de cada tarea contra el target de su cancha.',
+  'CALIDAD DE ARMADO': 'Calidad = 100% − tasa de error.\nTasa de error = errores reales ÷ paletas armadas × 100.\nErrores reales = registros de Voice y Gatera con error en el período y turno. Cada registro cuenta 1 (no la cantidad). No cuentan las verificaciones OK / sin novedad / con 0 errores ni los registros administrativos.',
+  'CALIDAD': 'Calidad = 100% − tasa de error. Tasa de error = errores reales (Voice + Gatera) ÷ paletas armadas × 100. Cada registro con error cuenta 1.',
+  'ERRORES REALES': 'Registros de Voice y Gatera con error en el período y turno. Cada registro cuenta 1 (no la cantidad). No cuentan las verificaciones OK / sin novedad / con 0 errores ni los registros administrativos de Gatera.',
+  'PALETAS ARMADAS': 'Suma de la columna Pallets del Excel de Picking en el período y turno.\nPromedio por día = paletas ÷ días con registros.',
+  'PALETAS': 'Suma de la columna Pallets del Excel de Picking en el período y turno.',
+  'BULTOS': 'Suma de la columna Packs / Bultos del Excel de Picking en el período y turno.\nPromedio por día = bultos ÷ días con registros.',
+  'OPERADOR': 'Nombre y legajo según la nómina. Días trabajados = días distintos con tareas de picking en el período.',
+  'PICKING': 'Cantidad de filas de picking cargadas (todas las fechas). Son tareas, no paletas.',
+  'MESES': 'Meses del año elegido que tienen registros de picking.',
+  'INCONSISTENCIAS': 'Controles de datos: errores sin empleado, sin fecha o sin número de paleta, y picking sin turno o sin cancha.',
+  'E.CARRIER': 'Registros administrativos de E.Carrier. No afectan ranking, ficha ni calidad.',
+  'TADA': 'Registros administrativos de TADA. No afectan ranking, ficha ni calidad.',
+  'CARGA': 'Registros administrativos de Carga. No afectan ranking, ficha ni calidad.',
+  'FALTANTE': 'Errores reales de tipo faltante. Voice: paletas con faltantes informados; Gatera: motivo que contiene "faltante". % = sobre el total de errores reales.',
+  'SOBRANTE': 'Errores reales de tipo sobrante. Voice: paletas con sobrantes informados; Gatera: motivo que contiene "sobrante". % = sobre el total de errores reales.',
+  'CAMBIO DE SABOR': 'Errores reales de tipo cambio de sabor. Voice: paletas con cambio de sabor informado; Gatera: motivo con "sabor" o "cambio". % = sobre el total de errores reales.',
+  'OTROS MOTIVOS': 'Errores reales cuyo motivo no es faltante, sobrante ni cambio de sabor (por ejemplo "Error sin motivo").',
+  'CUMPLIMIENTO': 'Real ÷ objetivo × 100, sumando todos los días del período (mismo cálculo que ve cada persona en su perfil).',
+  'RESULTADO': 'Resultado = 4,6 × real ÷ objetivo. 4,6 es el target de paletas por hora-hombre de clasificación.',
+  'REAL / OBJETIVO': 'Suma de las columnas Real y Objetivo del Excel de Clasificación en el período.',
+  'PERSONAS': 'Personas con registros de clasificación en el período y turno.',
+  'OPERADORES': 'Operadores con datos de autoelevador en el período. "Por debajo de 70%" = rendimiento menor a 70%.',
+  'RENDIMIENTO PROMEDIO': 'Promedio del rendimiento de los operadores. Con período Mes se usa el rendimiento del Resumen Mensual del Excel; con otros períodos, el promedio de los rendimientos diarios.',
+  'TIEMPO MUERTO': 'Tiempo muerto = objetivo − tiempo efectivo en operaciones (si da negativo, cuenta 0), sumado para todos los operadores o días.',
+  'TIEMPO EFECTIVO': 'Suma del "Tiempo efectivo en operaciones" del Excel de autoelevador. Horas netas = suma de la columna "Horas netas".',
+  'AUTOELEVADOR · RENDIMIENTO': 'Promedio del rendimiento diario del Excel de autoelevador en el período.\nTiempo muerto = suma de (objetivo − tiempo en operación) de cada día.',
+  'RENDIMIENTO (PROM. DIARIO)': 'Promedio del rendimiento diario del Excel de autoelevador en el período.',
+  'RALENTÍ': 'Suma del tiempo en ralentí (motor encendido sin operar) del Excel de autoelevador.',
+  'DÍAS': 'Días distintos con registros en el período.',
+  'CLASIFICACIÓN': 'Cumplimiento = real ÷ objetivo × 100 del período. Resultado = 4,6 × real ÷ objetivo.',
+  'LOGUEO AE': '% a horario = jornadas en verde ÷ jornadas del período, según el semáforo de Control_Diario.\n"Ocupada por el turno anterior" = ingresos en los que el turno anterior usó la máquina después del horario de ingreso.',
+  'ERRORES POR TIPO': 'Errores reales de la persona separados en faltante, sobrante, cambio de sabor u otro motivo.',
+  'JORNADAS': 'Jornadas controladas (filas de la hoja Control_Diario) en el período y turno.',
+  'A HORARIO (VERDE)': '% = jornadas en verde ÷ jornadas totales × 100. Verde = se logueó a horario y participa de la premiación.',
+  'DEMORADOS': 'Amarillo = demorado dentro de la tolerancia. Rojo = demorado. Los dos cuentan como demorados para la premiación.',
+  'MÁQUINA OCUPADA': 'Ingresos en los que el último uso de la máquina por el turno anterior fue después de la hora esperada de ingreso.'
+};
