@@ -105,3 +105,7 @@
 .buscador-res{margin-top:12px;border-top:1px solid #eee;padding-top:10px}.buscador-entendido{display:inline-block;background:#f3f4f6;border-radius:8px;padding:6px 10px;font-size:13px;color:#374151}
 @media(max-width:560px){.buscador-form{flex-direction:column}.buscador-form .primary{padding:12px}}
 .buscador-entendido{max-width:100%}
+/* Explicación de las tarjetas: aparece al pasar el mouse o tocar la tarjeta */
+.info-i{margin-left:6px;font-size:12px;color:#ffd400;opacity:.8}
+.kpi-card.con-info{cursor:help;outline:none}
+.kpi-card.con-info:hover::after,.kpi-card.con-info:focus::after{content:attr(data-info);position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:#fff;color:#1f2937;border:2px solid #ffc000;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45;font-weight:500;white-space:pre-line;box-shadow:0 10px 24px #0003;min-width:260px}
