@@ -15,7 +15,7 @@ export default function CapacitacionCarga(){
  const sv=review?.sinVincular;const nSin=sv?new Set([...sv.skap,...sv.plan,...sv.matriz]).size:0;
  return <div className="cap-carga">
   <p className="detail-sub">Subí la carpeta <b>Skap</b> (los 6 archivos de Autoelevadores y Picking) y el archivo <b>Matriz por Tareas.xlsx</b>. Podés subir todo junto o solo lo que cambió: cada parte reemplaza solo lo suyo.</p>
-  <div className="cap-upload-row"><label className="upload"><Upload/>Elegir carpeta Skap<input type="file" webkitdirectory="" directory="" multiple onChange={elegir}/></label><label className="upload"><Upload/>Elegir archivos sueltos<input type="file" accept=".xlsx,.xlsm" multiple onChange={elegir}/></label></div>
+  <div className="cap-upload-row"><label className="upload"><Upload/>Elegir carpeta Skap<input type="file" webkitdirectory="" directory="" multiple onChange={elegir}/></label><label className="upload"><Upload/>Elegir archivos sueltos<input type="file" accept=".xlsx,.xlsm,.xls" multiple onChange={elegir}/></label></div>
   {files?.length>0&&<p><b>{files.length} archivo{files.length===1?'':'s'} elegido{files.length===1?'':'s'}</b></p>}
   <label>Fecha objetivo para los entrenamientos pendientes (si la dejás vacía, queda la que ya estaba)</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/>
   <button className="primary" onClick={revisar} disabled={busy}>{busy&&!review?'Procesando...':'Revisar archivos'}</button>

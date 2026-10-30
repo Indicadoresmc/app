@@ -55,7 +55,8 @@ export default function ExcelVinculados({profile}){
    try{
     const h=vinculos[tipo];
     if(permiso[tipo]!=='granted')throw new Error('El navegador no dio permiso para leer el archivo. Tocá Actualizar de nuevo y elegí "Permitir".');
-    if(esCap(tipo)){let files=[];if(tipo==='cap_skap'){for await(const[n,en]of h.entries()){if(en.kind==='file'&&/\.(xlsx|xlsm)$/i.test(n)&&!n.startsWith('~$'))files.push(await en.getFile())}}else files=[await h.getFile()];
+    if(esCap(tipo)){let files=[];if(tipo==='cap_skap'){const vistos=[];const recorrer=async(dir,nivel)=>{for await(const[n,en]of dir.entries()){vistos.push(n);if(en.kind==='file'&&/\.(xlsx|xlsm|xls)$/i.test(n)&&!n.startsWith('~$'))files.push(await en.getFile());else if(en.kind==='directory'&&nivel<3)await recorrer(en,nivel+1)}};await recorrer(h,0);
+      if(!files.length)throw new Error(vistos.length?`En la carpeta “${h.name}” no encontré Excel. Hay: ${vistos.slice(0,8).join(', ')}${vistos.length>8?'…':''}. Vinculá la carpeta donde están los archivos SKAP.`:`La carpeta “${h.name}” está vacía para el navegador. Si es de OneDrive, abrila en el Explorador, clic derecho → “Mantener siempre en este dispositivo”, y tocá Actualizar de nuevo.`)}else files=[await h.getFile()];
      if(!files.length)throw new Error('La carpeta no tiene archivos Excel.');const review=await revisarCapacitacion(files);if(!capListo(review))throw new Error(tipo==='cap_skap'?'No encontré las hojas Consolidado ni BASE_PLAN_ACCION en la carpeta.':'No encontré la hoja Hechos_Capacitacion.');
      nuevo[tipo]={review,nombre:h.name,modificado:Math.max(...files.map(f=>f.lastModified))};setEstado(s=>({...s,[tipo]:nuevo[tipo]}));continue}
     const f=await h.getFile();

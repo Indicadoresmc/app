@@ -65,7 +65,7 @@ export function vincular(datos,buscar){
 // --- Archivos ---
 export async function leerArchivos(files){
  const d={skap:[],plan:[],matriz:[]},usados={skap:0,plan:0,matriz:0},avisos=[];
- const lista=Array.from(files).filter(f=>/\.(xlsx|xlsm)$/i.test(f.name)&&!f.name.startsWith('~$')&&U(f.name)!=='OWD DEPOSITO 3.0 & 4.0.XLSX');
+ const lista=Array.from(files).filter(f=>/\.(xlsx|xlsm|xls)$/i.test(f.name)&&!f.name.startsWith('~$')&&U(f.name)!=='OWD DEPOSITO 3.0 & 4.0.XLSX');
  for(const f of lista){try{
   const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});const hoja=n=>wb.SheetNames.find(s=>U(s)===n);const filas=n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null});
   const hm=hoja('HECHOS_CAPACITACION');if(hm){const r=leerMatriz(filas(hm));if(r.length){d.matriz=r;usados.matriz++}}
