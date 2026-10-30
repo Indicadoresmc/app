@@ -10,14 +10,14 @@ export default function CapacitacionCarga(){
   try{const r=await revisarCapacitacion(files);setReview(r);setMsg(r.usados.skap||r.usados.plan||r.usados.matriz?'Revisá la vista previa antes de publicar.':'No encontré las hojas Consolidado, BASE_PLAN_ACCION ni Hechos_Capacitacion en lo que elegiste.')}
   catch(e){setMsg(`No se pudo revisar: ${e.message}`)}finally{setBusy(false)}}
  async function publicar(){setBusy(true);setMsg('Publicando y reemplazando la versión anterior...');
-  try{const m=await publicarCapacitacion(review,{fechaObjetivo:fecha||null,archivo:Array.from(files).map(f=>f.name).slice(0,3).join(', ')});setReview(null);setFiles(null);setMsg(m)}
+  try{const m=await publicarCapacitacion(review,{fechaObjetivo:fecha||undefined,archivo:Array.from(files).map(f=>f.name).slice(0,3).join(', ')});setReview(null);setFiles(null);setMsg(m)}
   catch(e){setMsg(`No se publicó. Detalle: ${e.message}`)}finally{setBusy(false)}}
  const sv=review?.sinVincular;const nSin=sv?new Set([...sv.skap,...sv.plan,...sv.matriz]).size:0;
  return <div className="cap-carga">
   <p className="detail-sub">Subí la carpeta <b>Skap</b> (los 6 archivos de Autoelevadores y Picking) y el archivo <b>Matriz por Tareas.xlsx</b>. Podés subir todo junto o solo lo que cambió: cada parte reemplaza solo lo suyo.</p>
   <div className="cap-upload-row"><label className="upload"><Upload/>Elegir carpeta Skap<input type="file" webkitdirectory="" directory="" multiple onChange={elegir}/></label><label className="upload"><Upload/>Elegir archivos sueltos<input type="file" accept=".xlsx,.xlsm" multiple onChange={elegir}/></label></div>
   {files?.length>0&&<p><b>{files.length} archivo{files.length===1?'':'s'} elegido{files.length===1?'':'s'}</b></p>}
-  <label>Fecha objetivo para los entrenamientos pendientes (opcional)</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/>
+  <label>Fecha objetivo para los entrenamientos pendientes (si la dejás vacía, queda la que ya estaba)</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/>
   <button className="primary" onClick={revisar} disabled={busy}>{busy&&!review?'Procesando...':'Revisar archivos'}</button>
   {review&&<div className="notice"><div><b>Vista previa de capacitación</b>
    <p>{review.usados.skap?<><CheckCircle2 size={14}/> SKAP: {review.skap.length} personas ({review.usados.skap} archivos)</>:'SKAP: sin cambios'}</p>

@@ -83,6 +83,8 @@ export async function revisarCapacitacion(files){
 async function lotes(tabla,filas){for(let i=0;i<filas.length;i+=300){const{error}=await supabase.from(tabla).insert(filas.slice(i,i+300));if(error)throw error}}
 export async function publicarCapacitacion(review,{fechaObjetivo,archivo}){
  const hecho=[];
+ // Si no se indica fecha (por ejemplo desde Excel vinculados), se mantiene la que ya estaba publicada.
+ if(fechaObjetivo===undefined&&review.usados.plan){const{data}=await supabase.from('capacitacion_plan').select('fecha_objetivo').not('fecha_objetivo','is',null).order('fecha_objetivo',{ascending:false}).limit(1);fechaObjetivo=data?.[0]?.fecha_objetivo||null}
  if(review.usados.skap){const r=await supabase.from('capacitacion_skap').delete().gte('id',0);if(r.error)throw r.error;await lotes('capacitacion_skap',review.skap.map(x=>({...x,archivo})));hecho.push(`SKAP de ${review.skap.length} personas`)}
  if(review.usados.plan){const r=await supabase.from('capacitacion_plan').delete().gte('id',0);if(r.error)throw r.error;await lotes('capacitacion_plan',review.plan.map(x=>({...x,fecha_objetivo:x.estado==='NOK'&&fechaObjetivo?fechaObjetivo:null,archivo})));hecho.push(`plan de acción (${review.plan.filter(x=>x.estado==='NOK').length} pendientes)`)}
  if(review.usados.matriz){const r=await supabase.from('capacitacion_tareas').delete().gte('id',0);if(r.error)throw r.error;await lotes('capacitacion_tareas',review.tareas.map(x=>({...x,archivo})));hecho.push(`tareas de ${new Set(review.tareas.map(x=>x.empleado_id)).size} personas`)}
