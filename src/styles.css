@@ -109,3 +109,34 @@
 .info-i{margin-left:6px;font-size:12px;color:#ffd400;opacity:.8}
 .kpi-card.con-info{cursor:help;outline:none}
 .kpi-card.con-info:hover::after,.kpi-card.con-info:focus::after{content:attr(data-info);position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:#fff;color:#1f2937;border:2px solid #ffc000;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45;font-weight:500;white-space:pre-line;box-shadow:0 10px 24px #0003;min-width:260px}
+/* Mi capacitación */
+.cap-switch{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.cap-switch button{display:flex;align-items:center;gap:8px;border:1px solid #d1d5db;background:#fff;padding:9px 14px;border-radius:999px;font-weight:900;cursor:pointer;color:#111}
+.cap-switch button svg{width:18px;height:18px}
+.cap-switch button.sel{background:#000;color:#ffc000;border-color:#000}
+.cap-switch .menu-badge{background:#ff0000;color:#fff;border-radius:999px;padding:1px 7px;font-size:12px}
+.cap-kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.cap-barra{margin:12px 0}
+.cap-barra-top{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.cap-barra-top span{color:#6b7280;font-size:13px}
+.cap-barra-top strong{margin-left:auto;font-size:18px}
+.cap-track{height:12px;background:#eef2f6;border-radius:99px;overflow:hidden}
+.cap-track i{display:block;height:100%;border-radius:99px}
+.cap-count{background:#eef2f6;border-radius:99px;padding:2px 9px;font-size:13px;margin-left:6px}
+.cap-lista{list-style:none;margin:0;padding:0}
+.cap-lista li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #eef2f6}
+.cap-lista li:last-child{border-bottom:0}
+.cap-lista li div{flex:1;min-width:0}
+.cap-lista li small{display:block;color:#6b7280;margin-top:3px}
+.cap-lista .auto-status{font-size:12px;white-space:nowrap}
+.cap-dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none}
+.cap-dot.ok{background:#00b050}.cap-dot.nok{background:#ff0000}
+.cap-tareas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0}
+.cap-tarea{background:#fff;border:2px solid #d1d5db;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 2px 10px #0000000d;min-width:0}
+.cap-tarea img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#f6f7f9;border-radius:10px}
+.cap-tarea.no{opacity:.6}
+.cap-tarea .cap-estado{display:flex;align-items:center;gap:5px;font-weight:900;font-size:13px}
+.cap-tarea .cap-estado svg{width:16px;height:16px}
+.cap-tarea small{color:#6b7280}
+.cap-upload-row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.cap-carga input[type=date]{max-width:220px}
