@@ -3,6 +3,7 @@ import{AlertTriangle,CheckCircle2,Link2,RefreshCw,Unlink}from'lucide-react';
 import{revisarExcel,publicarRevision}from'./cargaExcel';
 import{invalidarDatosAnalisis}from'./datosAnalisis';
 import{revisarCapacitacion,publicarCapacitacion}from'./capacitacion';
+import{revisarHoras,publicarHoras}from'./horas';
 
 // Excel guardados en la carpeta de OneDrive de la compu: se vinculan una vez y
 // "Actualizar" los vuelve a leer. Nada se publica sin tocar "Publicar todo".
@@ -14,8 +15,12 @@ const TIPOS=[
  ['autoelevador','🚜 Autoelevador','El del mes.'],
  ['logueo','⏱️ Logueo AE','Control de logueo (hoja Control_Diario).'],
  ['cap_skap','🎓 SKAP y plan de acción','La carpeta Skap completa (los 6 archivos de Autoelevadores y Picking).'],
- ['cap_matriz','🎓 Habilidades (matriz)','Matriz por Tareas.xlsx (hoja Hechos_Capacitacion).']
+ ['cap_matriz','🎓 Habilidades (matriz)','Matriz por Tareas.xlsx (hoja Hechos_Capacitacion).'],
+ ['horas','🕐 Horas del personal','La carpeta donde guardás los Detalle de Consolidación (un Excel por turno).']
 ];
+const esCarpeta=t=>t==='cap_skap'||t==='horas';
+async function excelDeCarpeta(h){const files=[],vistos=[];const recorrer=async(dir,nivel)=>{for await(const[n,en]of dir.entries()){vistos.push(n);if(en.kind==='file'&&/\.(xlsx|xlsm|xls)$/i.test(n)&&!n.startsWith('~$'))files.push(await en.getFile());else if(en.kind==='directory'&&nivel<3)await recorrer(en,nivel+1)}};await recorrer(h,0);
+ if(!files.length)throw new Error(vistos.length?`En la carpeta “${h.name}” no encontré Excel. Hay: ${vistos.slice(0,8).join(', ')}${vistos.length>8?'…':''}. Vinculá la carpeta donde están los archivos.`:`La carpeta “${h.name}” está vacía para el navegador. Si es de OneDrive, abrila en el Explorador, clic derecho → “Mantener siempre en este dispositivo”, y tocá Actualizar de nuevo.`);return files}
 const esCap=t=>t==='cap_skap'||t==='cap_matriz';
 const capListo=r=>!!(r&&(r.usados.skap||r.usados.plan||r.usados.matriz));
 const NOMBRE=Object.fromEntries(TIPOS.map(([id,label])=>[id,label]));
@@ -27,6 +32,7 @@ async function guardarVinculo(tipo,h){try{const d=await db();await new Promise(r
 const fechaHora=ms=>new Date(ms).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
 
 function Resumen({tipo,r,year}){
+ if(tipo==='horas'){const fa=v=>v.split('-').reverse().join('/');return <>{r.grupos.map(g=><p key={g.hasta+g.turno}>Turno {g.turno||'sin turno'}: {g.personas} personas · {fa(g.desde)} al {fa(g.hasta)}</p>)}<p>Personas no reconocidas: {r.sinVincular.length}</p>{r.sinVincular.length>0&&<p className="note">Pendientes: {r.sinVincular.join(', ')}</p>}</>}
  if(esCap(tipo)){const sin=[...new Set([...r.sinVincular.skap,...r.sinVincular.plan,...r.sinVincular.matriz])];return <>{tipo==='cap_skap'?<p>SKAP: {r.skap.length} personas · Plan de acción: {r.plan.filter(x=>x.estado==='NOK').length} pendientes y {r.plan.filter(x=>x.estado==='OK').length} aprobados</p>:<p>Tareas: {new Set(r.tareas.map(x=>x.empleado_id)).size} personas</p>}<p>Personas no reconocidas: {sin.length}</p>{sin.length>0&&<p className="note">Pendientes: {sin.join(', ')}</p>}</>}
  if(tipo==='autoelevador')return <><p>Turnos: {r.turnos.join(', ')||'—'} · Resúmenes mensuales: {r.mensuales.length} · Días: {r.diarios.length} · Pausas: {r.pausas.length} · Horarios: {r.horarios.length}</p><p>Operadores no vinculados: {r.unknown.length}</p>{r.unknown.length>0&&<p className="note">Pendientes: {r.unknown.join(', ')}</p>}</>;
  return <><p>Filas leídas: {r.read} · Registros válidos: {r.valid.length}{tipo==='gatera'&&<> · Administrativos especiales: {r.special?.length||0}</>}{tipo==='voice'&&<> · Errores detectados: {r.totalErrores}</>}</p><p>Operarios no reconocidos: {r.unknown.length} · Duplicados internos: {r.duplicates} · Filas descartadas: {r.discarded}</p>{tipo==='manual'&&<p>{Object.entries(r.porMes||{}).map(([m,c])=>`${m}/${year}: ${c}`).join(' · ')}</p>}{tipo==='logueo'&&<p>Días: {r.desde?.split('-').reverse().join('/')} al {r.hasta?.split('-').reverse().join('/')} · Premiación: {r.mensual.length}</p>}{r.unknown.length>0&&<p className="note">Pendientes: {r.unknown.join(', ')}</p>}</>;
@@ -37,10 +43,10 @@ export default function ExcelVinculados({profile}){
  const[vinculos,setVinculos]=useState({}),[estado,setEstado]=useState({}),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');
  useEffect(()=>{leerVinculos().then(setVinculos)},[]);
  const vinculados=TIPOS.filter(([id])=>vinculos[id]);
- const listos=vinculados.filter(([id])=>{const r=estado[id]?.review;return r&&(esCap(id)?capListo(r):id==='autoelevador'?r.periodos.length>0:(r.valid.length||r.special?.length))});
+ const listos=vinculados.filter(([id])=>{const r=estado[id]?.review;return r&&(id==='horas'?r.valid.length>0:esCap(id)?capListo(r):id==='autoelevador'?r.periodos.length>0:(r.valid.length||r.special?.length))});
 
  async function vincular(tipo){
-  try{if(tipo==='cap_skap'){if(typeof window.showDirectoryPicker!=='function')return setMsg('Este navegador no deja vincular carpetas. Usá Chrome o Edge en la compu.');const h=await window.showDirectoryPicker({mode:'read'});await guardarVinculo(tipo,h);setVinculos(v=>({...v,[tipo]:h}));setEstado(e=>({...e,[tipo]:undefined}));return}
+  try{if(esCarpeta(tipo)){if(typeof window.showDirectoryPicker!=='function')return setMsg('Este navegador no deja vincular carpetas. Usá Chrome o Edge en la compu.');const h=await window.showDirectoryPicker({mode:'read'});await guardarVinculo(tipo,h);setVinculos(v=>({...v,[tipo]:h}));setEstado(e=>({...e,[tipo]:undefined}));return}
    const[h]=await window.showOpenFilePicker({types:[{description:'Excel',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx','.xlsm'],'application/vnd.ms-excel':['.xls']}}],multiple:false});
    await guardarVinculo(tipo,h);setVinculos(v=>({...v,[tipo]:h}));setEstado(e=>({...e,[tipo]:undefined}))}
   catch(e){if(e?.name!=='AbortError')setMsg('No se pudo vincular el archivo.')}
@@ -55,6 +61,8 @@ export default function ExcelVinculados({profile}){
    try{
     const h=vinculos[tipo];
     if(permiso[tipo]!=='granted')throw new Error('El navegador no dio permiso para leer el archivo. Tocá Actualizar de nuevo y elegí "Permitir".');
+    if(tipo==='horas'){const files=await excelDeCarpeta(h);const review=await revisarHoras(files);if(!review.valid.length)throw new Error('No encontré horas (columnas Empleado, Legajo y Concepto) en los Excel de la carpeta.');
+     nuevo[tipo]={review,nombre:h.name,modificado:Math.max(...files.map(f=>f.lastModified))};setEstado(s=>({...s,[tipo]:nuevo[tipo]}));continue}
     if(esCap(tipo)){let files=[];if(tipo==='cap_skap'){const vistos=[];const recorrer=async(dir,nivel)=>{for await(const[n,en]of dir.entries()){vistos.push(n);if(en.kind==='file'&&/\.(xlsx|xlsm|xls)$/i.test(n)&&!n.startsWith('~$'))files.push(await en.getFile());else if(en.kind==='directory'&&nivel<3)await recorrer(en,nivel+1)}};await recorrer(h,0);
       if(!files.length)throw new Error(vistos.length?`En la carpeta “${h.name}” no encontré Excel. Hay: ${vistos.slice(0,8).join(', ')}${vistos.length>8?'…':''}. Vinculá la carpeta donde están los archivos SKAP.`:`La carpeta “${h.name}” está vacía para el navegador. Si es de OneDrive, abrila en el Explorador, clic derecho → “Mantener siempre en este dispositivo”, y tocá Actualizar de nuevo.`)}else files=[await h.getFile()];
      if(!files.length)throw new Error('La carpeta no tiene archivos Excel.');const review=await revisarCapacitacion(files);if(!capListo(review))throw new Error(tipo==='cap_skap'?'No encontré las hojas Consolidado ni BASE_PLAN_ACCION en la carpeta.':'No encontré la hoja Hechos_Capacitacion.');
@@ -73,7 +81,7 @@ export default function ExcelVinculados({profile}){
   setBusy(true);setMsg('Publicando...');invalidarDatosAnalisis();
   for(const[tipo]of listos){
    const{review,nombre}=estado[tipo];
-   try{const m=esCap(tipo)?await publicarCapacitacion(review,{archivo:nombre}):tipo==='autoelevador'?await(await import('./AutoelevadorCarga')).publicarAutoelevador(review):await publicarRevision(review,{archivo:nombre,year,month,perfilId:profile.id});
+   try{const m=tipo==='horas'?await publicarHoras(review,{archivo:nombre}):esCap(tipo)?await publicarCapacitacion(review,{archivo:nombre}):tipo==='autoelevador'?await(await import('./AutoelevadorCarga')).publicarAutoelevador(review):await publicarRevision(review,{archivo:nombre,year,month,perfilId:profile.id});
     setEstado(s=>({...s,[tipo]:{...s[tipo],review:null,publicado:m}}))}
    catch(e){setEstado(s=>({...s,[tipo]:{...s[tipo],error:`No se publicó. Detalle: ${e.message}`}}))}
   }

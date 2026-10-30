@@ -140,3 +140,9 @@
 .cap-tarea small{color:#6b7280}
 .cap-upload-row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
 .cap-carga input[type=date]{max-width:220px}
+/* Mis horas */
+.horas-periodo{display:flex;align-items:center;gap:8px;margin:8px 0}
+.horas-periodo select{margin-left:6px;padding:6px}
+.horas-evol-fila{display:grid;grid-template-columns:60px minmax(0,1fr) 70px;gap:8px;align-items:center;margin:6px 0}
+.horas-evol-barra{position:relative;height:14px;background:#eef2f6;border-radius:4px}
+.horas-evol-barra i{position:absolute;top:0;bottom:0;border-radius:4px}
