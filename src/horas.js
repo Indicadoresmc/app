@@ -20,8 +20,8 @@ export function periodo(v,anio){const t=txt(v);const p=t.split(/\s*(?:\bal\b|\ba
 function turnoDe(n){const t=U(n);return /MANANA/.test(t)?'Mañana':/TARDE/.test(t)?'Tarde':/NOCHE/.test(t)?'Noche':/INTERMEDIO/.test(t)?'Intermedio':''}
 
 export function leerFilasHoras(nombre,rows){
- let h=-1;for(let i=0;i<Math.min(rows.length,60);i++){const H=(rows[i]||[]).map(U);if(H.includes('EMPLEADO')&&H.includes('LEGAJO')&&H.includes('CONCEPTO')){h=i;break}}
- if(h<0)return[];const H=rows[h].map(U),col=n=>H.findIndex(x=>x===n||x.startsWith(n));
+ let h=-1;for(let i=0;i<Math.min(rows.length,60);i++){const H=Array.from(rows[i]||[],U);if(H.includes('EMPLEADO')&&H.includes('LEGAJO')&&H.includes('CONCEPTO')){h=i;break}}
+ if(h<0)return[];const H=Array.from(rows[h],U),col=n=>H.findIndex(x=>x===n||(x||"").startsWith(n));
  const c={n:col('EMPLEADO'),l:col('LEGAJO'),p:col('FECHA DESDE'),co:col('CONCEPTO'),d:col('DESCRIPCION'),q:col('CANTIDAD'),t:col('TURNO')};
  const out=[];for(const r of rows.slice(h+1)){if(!r)continue;const nombreE=txt(r[c.n]),leg=legajoCompleto(r[c.l]),per=periodo(r[c.p],anioDe(nombre)),con=parseInt(r[c.co],10);
   if(nombreE&&leg&&!per&&!isNaN(con)){out.sinPeriodo=(out.sinPeriodo||0)+1;continue}if(!nombreE||!leg||!per||isNaN(con))continue;
