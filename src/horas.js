@@ -8,13 +8,13 @@ const txt=v=>v==null?'':String(v).replace(/\s+/g,' ').trim();
 // Los legajos vienen cortos (4014) o completos (29022470): se completan a 8 dígitos con el prefijo 29.
 export function legajoCompleto(v){if(v==null||v==='')return null;const s=String(v).trim().replace(/\.0+$/,'');if(!/^\d+$/.test(s)||+s<=0)return null;return s.length<=6?'29'+s.padStart(6,'0'):s}
 function cantidad(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));return isNaN(n)?null:n}
-function iso(v){if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);const m=String(v||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:null}
+function iso(v){if(v instanceof Date&&!isNaN(v))return`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);return d.toISOString().slice(0,10)}const m=String(v||'').trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/);if(!m)return null;const y=m[3].length===2?'20'+m[3]:m[3];return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
 // Acepta "16/09/2026 al 15/10/2026" y también sin año ("16/08 al 15/09"): el año se toma del nombre del archivo o del año actual.
 const MESN={ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,SETIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12};
 export function anioDe(nombre){const m=String(nombre||'').match(/20\d\d/);if(m)return+m[0];const h=new Date(),mes=Object.entries(MESN).find(([k])=>U(nombre).includes(k))?.[1];return mes&&mes>h.getMonth()+1?h.getFullYear()-1:h.getFullYear()}
-const dm=s=>{const m=String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})$/);return m?{d:+m[1],m:+m[2]}:null};
+const dm=s=>{const m=String(s||'').trim().match(/^(\d{1,2})[\/.\-](\d{1,2})$/);return m?{d:+m[1],m:+m[2]}:null};
 const ymd=(y,m,d)=>`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-export function periodo(v,anio){const t=txt(v);const p=t.split(/\s+al\s+/i);if(p.length===2){const a=iso(p[0]),b=iso(p[1]);if(a&&b)return{desde:a,hasta:b};
+export function periodo(v,anio){const t=txt(v);const p=t.split(/\s*(?:\bal\b|\ba\b|–|—|-(?=\s))\s*/i).filter(Boolean);if(p.length===2){const a=iso(p[0]),b=iso(p[1]);if(a&&b)return{desde:a,hasta:b};
   const A=dm(p[0]),B=dm(p[1]);if(A&&B&&anio){const yb=anio,ya=A.m>B.m?anio-1:anio;return{desde:a||ymd(ya,A.m,A.d),hasta:b||ymd(yb,B.m,B.d)}}}
  const d=iso(v);return d?{desde:d,hasta:d}:null}
 function turnoDe(n){const t=U(n);return /MANANA/.test(t)?'Mañana':/TARDE/.test(t)?'Tarde':/NOCHE/.test(t)?'Noche':/INTERMEDIO/.test(t)?'Intermedio':''}
