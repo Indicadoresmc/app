@@ -13,23 +13,31 @@ const CONCEPTOS={
 };
 function Kpi({titulo,valor,sub,accent}){return <div className="auto-kpi" style={{borderTopColor:accent}}><span>{titulo}</span><b>{valor}</b>{sub&&<small>{sub}</small>}</div>}
 
-export default function HorasPersonal({profile}){
+// Un período de horas corresponde al mes en que termina (ej. 01/10 al 31/10 → Octubre).
+const mesDe=v=>String(v||'').slice(0,7);
+const MESES=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+export default function HorasPersonal({profile,mes}){
  const empleadoId=profile?.empleado_id||profile?.empleados?.id;
  const[rows,setRows]=useState([]),[busy,setBusy]=useState(true),[error,setError]=useState(''),[periodo,setPeriodo]=useState('');
  useEffect(()=>{let activo=true;(async()=>{if(!empleadoId){setBusy(false);return}setBusy(true);setError('');
   const{data,error}=await supabase.from('horas_personal').select('*').eq('empleado_id',empleadoId).order('periodo_hasta',{ascending:false});
-  if(!activo)return;if(error)setError(error.message);else{setRows(data||[]);if(data?.[0])setPeriodo(data[0].periodo_hasta)}setBusy(false)})();return()=>{activo=false}},[empleadoId]);
+  if(!activo)return;if(error)setError(error.message);else setRows(data||[]);setBusy(false)})();return()=>{activo=false}},[empleadoId]);
+ // Sigue al "Período consultado" de arriba: al cambiar el mes, muestra las horas de ese mes.
+ const claveMes=mes?`${mes.anio}-${String(mes.mes).padStart(2,'0')}`:'';
+ useEffect(()=>{if(!rows.length)return;const delMes=rows.find(r=>mesDe(r.periodo_hasta)===claveMes);setPeriodo(delMes?delMes.periodo_hasta:claveMes?'':rows[0].periodo_hasta)},[rows,claveMes]);
  const periodos=useMemo(()=>{const m=new Map;rows.forEach(r=>{if(!m.has(r.periodo_hasta))m.set(r.periodo_hasta,{desde:r.periodo_desde,hasta:r.periodo_hasta})});return[...m.values()].sort((a,b)=>b.hasta.localeCompare(a.hasta))},[rows]);
  if(busy)return <div className="center"><b>Cargando tus horas...</b></div>;
  if(error)return <div className="error">No se pudieron cargar tus horas: {error}</div>;
  if(!rows.length)return <div className="empty"><Clock3/><h3>Todavía no hay horas cargadas para vos.</h3></div>;
+ const selector=periodos.length>1&&<div className="horas-periodo"><CalendarDays/><label>Período<select value={periodo} onChange={e=>setPeriodo(e.target.value)}>{!periodo&&<option value="">Elegí un período</option>}{periodos.map(x=><option key={x.hasta} value={x.hasta}>{fechaAR(x.desde)} al {fechaAR(x.hasta)}</option>)}</select></label></div>;
+ if(!periodo)return <>{selector}<div className="empty"><Clock3/><h3>No hay horas cargadas para {mes?`${MESES[mes.mes]} ${mes.anio}`:'este mes'}.</h3><p>Períodos disponibles: {periodos.map(x=>`${fechaAR(x.desde)} al ${fechaAR(x.hasta)}`).join(' · ')}</p></div></>;
  const del=rows.filter(r=>r.periodo_hasta===periodo).sort((a,b)=>(CONCEPTOS[a.concepto]?.orden||9)-(CONCEPTOS[b.concepto]?.orden||9));
  const p=periodos.find(x=>x.hasta===periodo)||periodos[0];
  const saldos=periodos.map(x=>({...x,saldo:rows.find(r=>r.periodo_hasta===x.hasta&&r.concepto===884)?.cantidad})).filter(x=>x.saldo!=null).reverse();
  const maxAbs=Math.max(1,...saldos.map(x=>Math.abs(x.saldo)));
  return <>
   <div className="module-head errors-head"><div><h2>Horas</h2><p>{profile.empleados?.apellido_nombre} · período del {fechaAR(p?.desde)} al {fechaAR(p?.hasta)}</p></div></div>
-  {periodos.length>1&&<div className="horas-periodo"><CalendarDays/><label>Período<select value={periodo} onChange={e=>setPeriodo(e.target.value)}>{periodos.map(x=><option key={x.hasta} value={x.hasta}>{fechaAR(x.desde)} al {fechaAR(x.hasta)}</option>)}</select></label></div>}
+  {selector}
   <div className="auto-kpi-grid cap-kpis">{del.map(r=>{const c=CONCEPTOS[r.concepto];return <Kpi key={r.id} titulo={c?.titulo||String(r.descripcion||'').toUpperCase()} valor={horas(r.cantidad)} sub={c?c.sub(r.cantidad):undefined} accent={c?c.color(r.cantidad):'#6b7280'}/>})}</div>
   {saldos.length>1&&<section className="panel auto-panel"><h3>Evolución del saldo de francos</h3>
    <div className="horas-evol">{saldos.map(x=><div key={x.hasta} className="horas-evol-fila"><span>{fechaAR(x.hasta).slice(3)}</span><div className="horas-evol-barra"><i style={{width:`${Math.abs(x.saldo)/maxAbs*50}%`,[x.saldo>=0?'left':'right']:'50%',background:x.saldo>=0?'#00b050':'#ff0000'}}/></div><b style={{color:x.saldo>=0?'#00b050':'#ff0000'}}>{horas(x.saldo)}</b></div>)}</div></section>}
