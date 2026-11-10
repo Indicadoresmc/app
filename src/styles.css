@@ -146,3 +146,7 @@
 .horas-evol-fila{display:grid;grid-template-columns:60px minmax(0,1fr) 70px;gap:8px;align-items:center;margin:6px 0}
 .horas-evol-barra{position:relative;height:14px;background:#eef2f6;border-radius:4px}
 .horas-evol-barra i{position:absolute;top:0;bottom:0;border-radius:4px}
+.vinculos-registro{margin-top:16px;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;background:#fff}
+.registro-lista{list-style:none;margin:10px 0 0;padding:0;max-height:340px;overflow:auto;font-size:13px}
+.registro-lista li{padding:7px 0;border-top:1px solid #f1f1f1;overflow-wrap:anywhere}.registro-lista small{color:#6b7280}
+.registro-lista .reg-error{color:#b91c1c}.registro-lista .reg-aviso{color:#92400e}
