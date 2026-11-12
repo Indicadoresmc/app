@@ -116,27 +116,37 @@ export const tipoError = e => {
   const m = norm(e.motivo); if(m.includes('FALT')) return 'Faltante'; if(m.includes('SOBR')) return 'Sobrante'; if(m.includes('SABOR') || m.includes('CAMBIO')) return 'Cambio de sabor'; return txt(e.motivo) || 'Otro';
 };
 const TIPOS = ['Faltante','Sobrante','Cambio de sabor'];
+// Por qué una persona tiene errores pero 0 paletas en el turno elegido.
+function sinPaletas(rowsPeriodo, turno){
+  const rows = rowsPeriodo || [];
+  if(!rows.length) return 'Sin picking cargado en el período: revisar si hizo otra tarea o si su nombre no se reconoció en el Excel de Picking.';
+  const porTurno = [...agrupar(rows, r => turnoCanon(r.turno)).entries()].map(([t, rs]) => `${fmt(suma(rs, 'pallets'))} en ${nombreTurno(t)}`).join(' · ');
+  return turno ? `El error está en ${nombreTurno(turno)}, pero sus paletas figuran en otro turno: ${porTurno}.` : `Sin paletas: ${porTurno}.`;
+}
+
 export function ErroresDetalle({ ctx }){
   const { empMap } = ctx;
   const calc = useMemo(() => {
     const ev = ctx.eFiltrado.filter(e => !noEsError(e)), total = ev.length;
     const paletasHechas = resumen(ctx.pFiltrado, [], 0).paletas;
+    // Paletas de la persona en el mismo período pero en cualquier turno, para explicar los casos con error y 0 paletas.
+    const palTodos = new Map([...agrupar(ctx.picking.filter(ctx.enRango), r => txt(r.empleado_id) || 'SIN').entries()].map(([id, rs]) => [id, rs]));
     const palOp = new Map([...agrupar(ctx.pFiltrado, r => txt(r.empleado_id) || 'SIN').entries()].map(([id, rs]) => [id, resumen(rs, [], 0).paletas]));
     const porTipo = [...agrupar(ev, tipoError).entries()].map(([tipo, rows]) => ({ tipo, voice: rows.filter(r => r.__origen === 'VOICE').length, gatera: rows.filter(r => r.__origen === 'GATERA').length, total: rows.length })).sort((a, b) => b.total - a.total);
-    const porOperador = [...agrupar(ev, e => txt(e.empleado_id) || 'SIN').entries()].map(([id, rows]) => { const t = agrupar(rows, tipoError); return { nombre: nombreDe(empMap, id, rows[0].operador || rows[0].pickero), ...Object.fromEntries(TIPOS.map(x => [x, (t.get(x) || []).length])), otros: rows.filter(r => !TIPOS.includes(tipoError(r))).length, total: rows.length, paletas: palOp.get(id) || 0, tasa: palOp.get(id) ? rows.length / palOp.get(id) * 100 : null }; }).sort((a, b) => b.total - a.total);
+    const porOperador = [...agrupar(ev, e => txt(e.empleado_id) || 'SIN').entries()].map(([id, rows]) => { const t = agrupar(rows, tipoError); return { nombre: nombreDe(empMap, id, rows[0].operador || rows[0].pickero), ...Object.fromEntries(TIPOS.map(x => [x, (t.get(x) || []).length])), otros: rows.filter(r => !TIPOS.includes(tipoError(r))).length, total: rows.length, paletas: palOp.get(id) || 0, tasa: palOp.get(id) ? rows.length / palOp.get(id) * 100 : null, motivoSin: palOp.get(id) ? '' : sinPaletas(palTodos.get(id), ctx.turno) }; }).sort((a, b) => b.total - a.total);
     const verif = e => txt(e.__origen === 'VOICE' ? e.datos_originales?.verificador : e.verificador) || 'Sin verificador';
     const porVerificador = [...agrupar(ev, verif).entries()].map(([v, rows]) => ({ v, voice: rows.filter(r => r.__origen === 'VOICE').length, gatera: rows.filter(r => r.__origen === 'GATERA').length, total: rows.length, operadores: new Set(rows.map(r => txt(r.empleado_id))).size })).sort((a, b) => b.total - a.total);
     const gat = ev.filter(e => e.__origen === 'GATERA');
     const porCanal = [...agrupar(gat, e => txt(e.canal) || 'Sin canal').entries()].map(([canal, rows]) => ({ canal, errores: rows.length, cantidad: suma(rows, 'cantidad') })).sort((a, b) => b.errores - a.errores);
     const porSku = [...agrupar(gat.filter(e => txt(e.sku)), e => txt(e.sku)).entries()].map(([sku, rows]) => ({ sku, desc: txt(rows.find(r => txt(r.descripcion))?.descripcion) || '—', errores: rows.length, cantidad: suma(rows, 'cantidad'), operadores: new Set(rows.map(r => txt(r.empleado_id))).size, tipos: [...new Set(rows.map(tipoError))].join(', ') })).sort((a, b) => b.errores - a.errores);
     return { total, paletasHechas, porTipo, porOperador, porVerificador, porCanal, porSku };
-  }, [ctx.eFiltrado, empMap]);
+  }, [ctx.eFiltrado, ctx.pFiltrado, ctx.picking, ctx.turno, ctx.periodo, ctx.year, ctx.month, ctx.fecha, empMap]);
   const { total, porTipo } = calc;
   return <section>
     <h2>🔎 Errores en detalle</h2>
     <p className="note">Errores reales de Voice y Gatera del período y turno elegidos ({total} en total). Se cuenta cada registro de error, igual que en el resto del Análisis.</p>
     {!total ? <Empty/> : <div className="analysis-kpis">{TIPOS.map(t => { const x = porTipo.find(p => p.tipo === t); return <Card key={t} title={t.toUpperCase()} value={x?.total || 0} line1={`${pct((x?.total || 0) / total * 100)} del total`} line2={`Voice ${x?.voice || 0} · Gatera ${x?.gatera || 0}`}/>; })}<Card title="ERRORES SOBRE PALETAS REALIZADAS" value={pct(calc.paletasHechas ? total / calc.paletasHechas * 100 : 0)} line1={`${total} ${total===1?'error':'errores'} ÷ ${fmt(calc.paletasHechas)} paletas realizadas`}/><Card title="OTROS MOTIVOS" value={total - TIPOS.reduce((s, t) => s + (porTipo.find(p => p.tipo === t)?.total || 0), 0)} line1="Motivos que no son faltante, sobrante ni cambio de sabor"/></div>}
-    <TablaDatos titulo="Errores por tipo y operador" sub="% error = errores ÷ paletas realizadas por el operador en el período." archivo="Errores_por_tipo_y_operador" data={calc.porOperador} cols={[{ t:'Operador', v:r => r.nombre }, ...TIPOS.map(t => ({ t, v:r => r[t] })), { t:'Otros', v:r => r.otros }, { t:'Total', v:r => r.total, f:v => <b>{v}</b> }, { t:'Paletas realizadas', v:r => r.paletas, f:fmt }, { t:'% error', v:r => r.tasa == null ? '' : +r.tasa.toFixed(1), f:v => v === '' ? '—' : <b>{pct(v)}</b> }]}/>
+    <TablaDatos titulo="Errores por tipo y operador" sub="% error = errores ÷ paletas realizadas por el operador en el período." archivo="Errores_por_tipo_y_operador" data={calc.porOperador} cols={[{ t:'Operador', v:r => r.nombre }, ...TIPOS.map(t => ({ t, v:r => r[t] })), { t:'Otros', v:r => r.otros }, { t:'Total', v:r => r.total, f:v => <b>{v}</b> }, { t:'Paletas realizadas', v:r => r.paletas, f:fmt }, { t:'% error', v:r => r.tasa == null ? '' : +r.tasa.toFixed(1), f:v => v === '' ? '—' : <b>{pct(v)}</b> }, { t:'Observación', v:r => r.motivoSin, f:v => v ? <small style={{ color:'#b45309' }}>{v}</small> : '' }]}/>
     <div className="grid-2">
       <TablaDatos titulo="Errores por tipo" archivo="Errores_por_tipo" data={porTipo} cols={[{ t:'Tipo', v:r => r.tipo }, { t:'Voice', v:r => r.voice }, { t:'Gatera', v:r => r.gatera }, { t:'Total', v:r => r.total }, { t:'%', v:r => +(r.total / Math.max(1, total) * 100).toFixed(1), f:pct }]}/>
       <TablaDatos titulo="Errores detectados por verificador" sub="Cuántos errores registró cada verificador." archivo="Errores_por_verificador" data={calc.porVerificador} cols={[{ t:'Verificador', v:r => r.v }, { t:'Voice', v:r => r.voice }, { t:'Gatera', v:r => r.gatera }, { t:'Total', v:r => r.total }, { t:'Operadores', v:r => r.operadores }]}/>
