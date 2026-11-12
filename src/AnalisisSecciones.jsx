@@ -120,6 +120,7 @@ export function ErroresDetalle({ ctx }){
   const { empMap } = ctx;
   const calc = useMemo(() => {
     const ev = ctx.eFiltrado.filter(e => !noEsError(e)), total = ev.length;
+    const paletasHechas = resumen(ctx.pFiltrado, [], 0).paletas;
     const porTipo = [...agrupar(ev, tipoError).entries()].map(([tipo, rows]) => ({ tipo, voice: rows.filter(r => r.__origen === 'VOICE').length, gatera: rows.filter(r => r.__origen === 'GATERA').length, total: rows.length })).sort((a, b) => b.total - a.total);
     const porOperador = [...agrupar(ev, e => txt(e.empleado_id) || 'SIN').entries()].map(([id, rows]) => { const t = agrupar(rows, tipoError); return { nombre: nombreDe(empMap, id, rows[0].operador || rows[0].pickero), ...Object.fromEntries(TIPOS.map(x => [x, (t.get(x) || []).length])), otros: rows.filter(r => !TIPOS.includes(tipoError(r))).length, total: rows.length }; }).sort((a, b) => b.total - a.total);
     const verif = e => txt(e.__origen === 'VOICE' ? e.datos_originales?.verificador : e.verificador) || 'Sin verificador';
@@ -127,13 +128,13 @@ export function ErroresDetalle({ ctx }){
     const gat = ev.filter(e => e.__origen === 'GATERA');
     const porCanal = [...agrupar(gat, e => txt(e.canal) || 'Sin canal').entries()].map(([canal, rows]) => ({ canal, errores: rows.length, cantidad: suma(rows, 'cantidad') })).sort((a, b) => b.errores - a.errores);
     const porSku = [...agrupar(gat.filter(e => txt(e.sku)), e => txt(e.sku)).entries()].map(([sku, rows]) => ({ sku, desc: txt(rows.find(r => txt(r.descripcion))?.descripcion) || '—', errores: rows.length, cantidad: suma(rows, 'cantidad'), operadores: new Set(rows.map(r => txt(r.empleado_id))).size, tipos: [...new Set(rows.map(tipoError))].join(', ') })).sort((a, b) => b.errores - a.errores);
-    return { total, porTipo, porOperador, porVerificador, porCanal, porSku };
+    return { total, paletasHechas, porTipo, porOperador, porVerificador, porCanal, porSku };
   }, [ctx.eFiltrado, empMap]);
   const { total, porTipo } = calc;
   return <section>
     <h2>🔎 Errores en detalle</h2>
     <p className="note">Errores reales de Voice y Gatera del período y turno elegidos ({total} en total). Se cuenta cada registro de error, igual que en el resto del Análisis.</p>
-    {!total ? <Empty/> : <div className="analysis-kpis">{TIPOS.map(t => { const x = porTipo.find(p => p.tipo === t); return <Card key={t} title={t.toUpperCase()} value={x?.total || 0} line1={`${pct((x?.total || 0) / total * 100)} del total`} line2={`Voice ${x?.voice || 0} · Gatera ${x?.gatera || 0}`}/>; })}<Card title="OTROS MOTIVOS" value={total - TIPOS.reduce((s, t) => s + (porTipo.find(p => p.tipo === t)?.total || 0), 0)} line1="Motivos que no son faltante, sobrante ni cambio de sabor"/></div>}
+    {!total ? <Empty/> : <div className="analysis-kpis">{TIPOS.map(t => { const x = porTipo.find(p => p.tipo === t); return <Card key={t} title={t.toUpperCase()} value={x?.total || 0} line1={`${pct((x?.total || 0) / total * 100)} del total`} line2={`Voice ${x?.voice || 0} · Gatera ${x?.gatera || 0}`}/>; })}<Card title="ERRORES SOBRE PALETAS REALIZADAS" value={pct(calc.paletasHechas ? total / calc.paletasHechas * 100 : 0)} line1={`${total} ${total===1?'error':'errores'} ÷ ${fmt(calc.paletasHechas)} paletas realizadas`}/><Card title="OTROS MOTIVOS" value={total - TIPOS.reduce((s, t) => s + (porTipo.find(p => p.tipo === t)?.total || 0), 0)} line1="Motivos que no son faltante, sobrante ni cambio de sabor"/></div>}
     <TablaDatos titulo="Errores por tipo y operador" archivo="Errores_por_tipo_y_operador" data={calc.porOperador} cols={[{ t:'Operador', v:r => r.nombre }, ...TIPOS.map(t => ({ t, v:r => r[t] })), { t:'Otros', v:r => r.otros }, { t:'Total', v:r => r.total, f:v => <b>{v}</b> }]}/>
     <div className="grid-2">
       <TablaDatos titulo="Errores por tipo" archivo="Errores_por_tipo" data={porTipo} cols={[{ t:'Tipo', v:r => r.tipo }, { t:'Voice', v:r => r.voice }, { t:'Gatera', v:r => r.gatera }, { t:'Total', v:r => r.total }, { t:'%', v:r => +(r.total / Math.max(1, total) * 100).toFixed(1), f:pct }]}/>

@@ -82,6 +82,7 @@ export function puntuarRanking(ops){
 
 // Explicación de cada tarjeta del administrador: aparece al pasar el mouse o tocar la tarjeta.
 export const INFO_TARJETAS = {
+  'ERRORES SOBRE PALETAS REALIZADAS': 'Errores reales (Voice + Gatera) dividido las paletas armadas del período y turno elegidos. Mismo cálculo que ve cada operador en su perfil.',
   'PRODUCTIVIDAD': 'Bultos por hora = total de bultos ÷ horas de picking (suma de la "Duración total" de las tareas del Excel de Picking). Si el Excel no trae duración, se usa el promedio de la columna Bultos/hora.\nCumplimiento = productividad ÷ target × 100. En el Dashboard se usa el target general del turno; en la ficha, el promedio del cumplimiento de cada tarea contra el target de su cancha.',
   'CALIDAD DE ARMADO': 'Calidad = 100% − tasa de error.\nTasa de error = errores reales ÷ paletas armadas × 100.\nErrores reales = registros de Voice y Gatera con error en el período y turno. Cada registro cuenta 1 (no la cantidad). No cuentan las verificaciones OK / sin novedad / con 0 errores ni los registros administrativos.',
   'CALIDAD': 'Calidad = 100% − tasa de error. Tasa de error = errores reales (Voice + Gatera) ÷ paletas armadas × 100. Cada registro con error cuenta 1.',
