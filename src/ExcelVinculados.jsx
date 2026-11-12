@@ -18,8 +18,8 @@ const TIPOS=[
  {id:'picking',label:'📈 Picking',modo:'mes',filtro:'ANALISIS PICKING',ayuda:'La carpeta "Analisis Picking 2026". Toma sola el mes más nuevo.'},
  {id:'voice',label:'🎧 Errores Voice',modo:'mes',filtro:'REPORTE DE ERRORES',ayuda:'La carpeta "Errores Picking 2026". Toma sola el mes más nuevo.'},
  {id:'gatera',label:'⚠️ Errores Gatera',modo:'mes',ayuda:'El archivo o la carpeta (hoja con el nombre del mes).'},
- {id:'autoelevador',label:'🚜 Autoelevador Mañana-Tarde',modo:'mes',filtro:'PRODUCTIVIDAD',ae:true,ayuda:'La carpeta "AE Turno Mañana-Tarde-2026". Busca el Productividad del mes.'},
- {id:'autoelevador_noche',label:'🚜 Autoelevador Noche',modo:'mes',filtro:'PRODUCTIVIDAD',ae:true,ayuda:'La carpeta "AE Turno Noche 2026". Busca el Productividad del mes.'},
+ {id:'autoelevador',label:'🚜 Autoelevador Mañana-Tarde',modo:'archivo',ae:true,ayuda:'El Excel "Productividad_Turnos_Manana_Tarde_2026" (no la carpeta).'},
+ {id:'autoelevador_noche',label:'🚜 Autoelevador Noche',modo:'archivo',ae:true,ayuda:'El Excel de Productividad del turno noche 2026 (no la carpeta).'},
  {id:'logueo',label:'⏱️ Logueo AE',modo:'archivo',ayuda:'Control_Logueo_AE_2026 (hoja Control_Diario).'},
  {id:'cap_skap',label:'🎓 SKAP y plan de acción',modo:'carpeta',ayuda:'La carpeta Skap completa (los 6 archivos de Autoelevadores y Picking).'},
  {id:'cap_matriz',label:'🎓 Habilidades (matriz)',modo:'archivo',ayuda:'Matriz por Tareas.xlsx (hoja Hechos_Capacitacion).'},
@@ -78,6 +78,7 @@ async function trabajosDe(tipo,h,firmasTipo,forzar){
   const periodo=def.modo==='mes'?periodoDeNombre(f.name):null;
   return[{files:[f],nombre:f.name,periodo,firmas:{'*':firma}}];
  }
+ if(def.modo==='archivo')throw new Error('Acá va el Excel, no la carpeta. Tocá Cambiar y elegí el archivo.');
  const todos=await listarExcel(h);
  if(!todos.length)throw new Error(vaciaMsg(h));
  if(def.modo==='carpeta'){
@@ -217,6 +218,6 @@ export default function ExcelVinculados({profile}){
    {!mostrar.length?<p className="note">{verTodo?'Todavía no hay nada.':'Sin avisos. Todo lo publicado coincidió con el personal cargado.'}</p>:
     <ul className="registro-lista">{mostrar.map((x,i)=><li key={x.t+'-'+i} className={'reg-'+x.nivel}><small>{fechaHora(x.t)}</small> <b>{x.tipo}</b>{x.archivo&&<small> · {x.archivo}</small>}<br/>{x.nivel==='error'?'❌ ':x.nivel==='aviso'?'⚠️ ':'✅ '}{x.texto}</li>)}</ul>}
   </div>
-  <p className="note">Picking, Voice y Gatera toman el mes del nombre del archivo (número adelante o el mes escrito). Autoelevador: cada carpeta publica solo sus turnos, así Mañana-Tarde y Noche no se pisan. El navegador puede pedir permiso una vez por sesión: tocá “Actualizar ahora” y elegí “Permitir”.</p>
+  <p className="note">Picking, Voice y Gatera toman el mes del nombre del archivo (número adelante o el mes escrito). Autoelevador: cada Excel publica solo sus turnos, así Mañana-Tarde y Noche no se pisan. El navegador puede pedir permiso una vez por sesión: tocá “Actualizar ahora” y elegí “Permitir”.</p>
  </section>;
 }
