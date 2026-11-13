@@ -5,7 +5,20 @@ import { normal } from './cargaExcel';
 // Fuente: hoja Control_Diario (la misma que usan el Dashboard y la Premiación del Excel),
 // el "Último uso" de la máquina sale de Soporte_Resumen y el resultado del mes de Resumen_Premiacion.
 let XLSX;
-const fechaISO = v => { if(typeof v !== 'number') return null; const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}` : null; };
+// Acepta la fecha como número de Excel, como fecha, o escrita como texto ("13/11/2026", "2026-11-13", "noviembre 2026", "nov-26").
+const MESES_TXT = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+const iso = (y, m, d) => y && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+const fechaISO = v => {
+  if(v == null || v === '') return null;
+  if(typeof v === 'number'){ const d = XLSX.SSF.parse_date_code(v); return d ? iso(d.y, d.m, d.d) : null; }
+  if(v instanceof Date && !isNaN(v)) return iso(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  const t = String(v).trim(); let m;
+  if((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return iso(+m[1], +m[2], +m[3]);
+  if((m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/))) return iso(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[2], +m[1]);
+  const n = normal(t), mes = MESES_TXT.findIndex(x => n.startsWith(x)), y = n.match(/(20\d{2}|\b\d{2}\b)/);
+  if(mes >= 0 && y) return iso(y[1].length === 2 ? 2000 + +y[1] : +y[1], mes + 1, 1);
+  return null;
+};
 const hora = v => typeof v === 'number' ? XLSX.SSF.format('hh:mm:ss', v) : (String(v ?? '').trim() || null);
 const entero = v => v == null || v === '' || !Number.isFinite(Number(v)) ? null : Math.round(Number(v));
 const numero = v => v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v);
