@@ -6,7 +6,7 @@ import{crearBuscador}from'./capacitacion';
 const U=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const txt=v=>v==null?'':String(v).replace(/\s+/g,' ').trim();
 // Los legajos vienen cortos (4014) o completos (29022470): se completan a 8 dígitos con el prefijo 29.
-export function legajoCompleto(v){if(v==null||v==='')return null;const s=String(v).trim().replace(/\.0+$/,'');if(!/^\d+$/.test(s)||+s<=0)return null;return s.length<=6?'29'+s.padStart(6,'0'):s}
+export function legajoCompleto(v){if(v==null||v==='')return null;const s=String(v).trim().replace(/\.0+$/,'').replace(/\D/g,'');if(!/^\d+$/.test(s)||+s<=0)return null;return s.length<=6?'29'+s.padStart(6,'0'):s}
 function cantidad(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));return isNaN(n)?null:n}
 function iso(v){if(v instanceof Date&&!isNaN(v))return`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);return d.toISOString().slice(0,10)}const m=String(v||'').trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/);if(!m)return null;const y=m[3].length===2?'20'+m[3]:m[3];return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
 // Acepta "16/09/2026 al 15/10/2026" y también sin año ("16/08 al 15/09"): el año se toma del nombre del archivo o del año actual.
@@ -17,13 +17,17 @@ const ymd=(y,m,d)=>`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0'
 export function periodo(v,anio){const t=txt(v);const p=t.split(/\s*(?:\bal\b|\ba\b|–|—|-(?=\s))\s*/i).filter(Boolean);if(p.length===2){const a=iso(p[0]),b=iso(p[1]);if(a&&b)return{desde:a,hasta:b};
   const A=dm(p[0]),B=dm(p[1]);if(A&&B&&anio){const yb=anio,ya=A.m>B.m?anio-1:anio;return{desde:a||ymd(ya,A.m,A.d),hasta:b||ymd(yb,B.m,B.d)}}}
  const d=iso(v);return d?{desde:d,hasta:d}:null}
+// Si "Fecha Desde" no se puede leer, el período sale del mes del nombre del archivo: "Noviembre" = 16/10 al 15/11.
+export function periodoArchivo(nombre){const mes=Object.entries(MESN).find(([k])=>U(nombre).includes(k))?.[1];if(!mes)return null;const y=anioDe(nombre);return{desde:mes===1?ymd(y-1,12,16):ymd(y,mes-1,16),hasta:ymd(y,mes,15)}}
 function turnoDe(n){const t=U(n);return /MANANA/.test(t)?'Mañana':/TARDE/.test(t)?'Tarde':/NOCHE/.test(t)?'Noche':/INTERMEDIO/.test(t)?'Intermedio':''}
 
 export function leerFilasHoras(nombre,rows){
- let h=-1;for(let i=0;i<Math.min(rows.length,60);i++){const H=Array.from(rows[i]||[],U);if(H.includes('EMPLEADO')&&H.includes('LEGAJO')&&H.includes('CONCEPTO')){h=i;break}}
- if(h<0)return[];const H=Array.from(rows[h],U),col=n=>H.findIndex(x=>x===n||(x||"").startsWith(n));
- const c={n:col('EMPLEADO'),l:col('LEGAJO'),p:col('FECHA DESDE'),co:col('CONCEPTO'),d:col('DESCRIPCION'),q:col('CANTIDAD'),t:col('TURNO')};
- const out=[];for(const r of rows.slice(h+1)){if(!r)continue;const nombreE=txt(r[c.n]),leg=legajoCompleto(r[c.l]),per=periodo(r[c.p],anioDe(nombre)),con=parseInt(r[c.co],10);
+ const tiene=(H,...ks)=>ks.some(k=>H.some(x=>x===k||(x||'').startsWith(k)));
+ let h=-1;for(let i=0;i<Math.min(rows.length,60);i++){const H=Array.from(rows[i]||[],U);if(tiene(H,'EMPLEADO','APELLIDO','NOMBRE')&&tiene(H,'LEGAJO')&&tiene(H,'CONCEPTO')){h=i;break}}
+ if(h<0){const o=[];o.sinEncabezado=true;return o}const H=Array.from(rows[h],U),col=(...ns)=>{for(const n of ns){const i=H.findIndex(x=>x===n||(x||"").startsWith(n));if(i>=0)return i}return -1};
+ const pArch=periodoArchivo(nombre);
+ const c={n:col('EMPLEADO','APELLIDO','NOMBRE'),l:col('LEGAJO'),p:col('FECHA DESDE'),co:col('CONCEPTO'),d:col('DESCRIPCION'),q:col('CANTIDAD'),t:col('TURNO')};
+ const out=[];for(const r of rows.slice(h+1)){if(!r)continue;const nombreE=txt(r[c.n]),leg=legajoCompleto(r[c.l]),per=periodo(r[c.p],anioDe(nombre))||pArch,con=parseInt(String(r[c.co]??'').match(/\d+/)?.[0],10);
   if(nombreE&&leg&&!per&&!isNaN(con)){out.sinPeriodo=(out.sinPeriodo||0)+1;continue}if(!nombreE||!leg||!per||isNaN(con))continue;
   out.push({archivo:nombre,nombre:nombreE,legajo:leg,turno:txt(r[c.t])||turnoDe(nombre),periodo_desde:per.desde,periodo_hasta:per.hasta,concepto:con,descripcion:txt(r[c.d]),cantidad:cantidad(r[c.q])})}
  return out;
@@ -31,9 +35,9 @@ export function leerFilasHoras(nombre,rows){
 export async function revisarHoras(files){
  const lista=Array.from(files).filter(f=>/\.(xlsx|xlsm|xls)$/i.test(f.name)&&!f.name.startsWith('~$'));
  const filas=[],avisos=[];let usados=0;
- for(const f of lista){try{const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});let n=0;
-   for(const s of wb.SheetNames){const r=leerFilasHoras(f.name,XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:true,blankrows:false}));if(r.sinPeriodo)avisos.push(`${f.name}: ${r.sinPeriodo} filas sin un período que se pueda leer en “Fecha Desde”.`);if(r.length){filas.push(...r);n+=r.length}}
-   if(!n)avisos.push(`${f.name}: no se cargó ninguna fila.`)
+ for(const f of lista){try{const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});let n=0,sinEnc=0;
+   for(const s of wb.SheetNames){const r=leerFilasHoras(f.name,XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:true,blankrows:false}));if(r.sinEncabezado)sinEnc++;if(r.sinPeriodo)avisos.push(`${f.name}: ${r.sinPeriodo} filas sin un período que se pueda leer en “Fecha Desde”.`);if(r.length){filas.push(...r);n+=r.length}}
+   if(!n)avisos.push(`${f.name}: no se cargó ninguna fila${sinEnc===wb.SheetNames.length?' (no encontré la fila de títulos con Empleado, Legajo y Concepto)':''}.`)
    if(n)usados++}catch(e){avisos.push(`No se pudo leer ${f.name}: ${e.message}`)}}
  const[{data:emps,error},{data:vars}]=await Promise.all([supabase.from('empleados').select('id,legajo,apellido_nombre,nombre_normalizado,turno,activo'),supabase.from('variantes_nombres').select('empleado_id,variante_normalizada,activa')]);
  if(error)throw error;
