@@ -47,14 +47,15 @@ export async function revisarLogueo(file){
   const ultimo = new Map();
   if(wb.Sheets['Soporte_Resumen']){ const s = tabla(wb, 'Soporte_Resumen', ['Clave', 'Último uso']); s.filas.forEach(r => { const v = r[s.ix('Último uso')]; if(v != null && v !== '') ultimo.set(String(r[s.ix('Clave')]), hora(v)); }); }
 
-  const valid = [], unknown = new Map(), seen = new Set(); let discarded = 0, duplicates = 0, sinLogueo = 0;
+  const valid = [], unknown = new Map(), seen = new Set(); let discarded = 0, duplicates = 0, sinLogueo = 0; const porMes = {}, mesDe = f => (porMes[f.slice(0, 7)] ??= { validas: 0, sinLogueo: 0, sinTurno: 0, sinOperador: 0 });
   for(const r of ctl.filas){
     const fecha = fechaISO(r[ctl.ix('Fecha')]), legajo = texto(r[ctl.ix('ID Operador')])?.replace(/\.0$/, ''), nombre = texto(r[ctl.ix('Operador')]), turno = texto(r[ctl.ix('Turno trabajado')]);
-    if(!fecha || !legajo || !turno){ discarded++; continue; }
+    if(!fecha || !legajo || !turno){ discarded++; if(fecha && legajo) mesDe(fecha).sinTurno++; continue; }
     // Días sin primer logueo (domingos, feriados, francos, ausencias): no son jornadas en la máquina, no se publican.
-    if(hora(r[ctl.ix('Primer logueo')]) == null){ sinLogueo++; continue; }
-    const emp = buscar(legajo, nombre); if(!emp){ unknown.set(legajo, `${nombre} (${legajo})`); continue; }
+    if(hora(r[ctl.ix('Primer logueo')]) == null){ sinLogueo++; mesDe(fecha).sinLogueo++; continue; }
+    const emp = buscar(legajo, nombre); if(!emp){ unknown.set(legajo, `${nombre} (${legajo})`); mesDe(fecha).sinOperador++; continue; }
     const key = `${fecha}|${turno}|${legajo}`; if(seen.has(key)){ duplicates++; continue; } seen.add(key);
+    mesDe(fecha).validas++;
     valid.push({ empleado_id: emp.id, legajo, operador: nombre, fecha, turno,
       hora_esperada: hora(r[ctl.ix('Hora esperada')]), primer_logueo: hora(r[ctl.ix('Primer logueo')]), minutos_diferencia: entero(r[ctl.ix('Minutos diferencia')]),
       resultado: texto(r[ctl.ix('Resultado premiación')]), semaforo: texto(r[ctl.ix('Semáforo')]), hora_final: hora(r[ctl.ix('Hora final')]),
@@ -74,7 +75,7 @@ export async function revisarLogueo(file){
     }
   }
   const fechas = valid.map(x => x.fecha).sort();
-  return { tipo: 'logueo', valid, mensual, unknown: [...unknown.values()], discarded, duplicates, sinLogueo, read: ctl.filas.length, sheet: 'Control_Diario', desde: fechas[0], hasta: fechas.at(-1) };
+  return { tipo: 'logueo', valid, mensual, unknown: [...unknown.values()], discarded, duplicates, sinLogueo, read: ctl.filas.length, sheet: 'Control_Diario', desde: fechas[0], hasta: fechas.at(-1), porMes };
 }
 
 async function lotes(t, filas){ for(let i = 0; i < filas.length; i += 300){ const { error } = await supabase.from(t).insert(filas.slice(i, i + 300)); if(error) throw error; } }

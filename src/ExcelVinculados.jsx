@@ -121,11 +121,13 @@ function avisosDe(tipo,r){
  return a;
 }
 
+const MESN=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+export function MesesLogueo({porMes}){if(!porMes)return null;const ks=Object.keys(porMes).sort();if(!ks.length)return null;return <div className="note">{ks.map(k=>{const x=porMes[k],[y,m]=k.split('-');return <p key={k} style={{margin:'2px 0',color:x.validas?undefined:'#B40000'}}><b>{MESN[+m-1]} {y}:</b> {x.validas} jornadas{x.sinLogueo?` · ${x.sinLogueo} sin primer logueo`:''}{x.sinTurno?` · ${x.sinTurno} sin turno`:''}{x.sinOperador?` · ${x.sinOperador} operador no reconocido`:''}</p>})}</div>}
 function Resumen({tipo,r}){
  if(tipo==='horas'){const fa=v=>v.split('-').reverse().join('/');return <>{r.grupos.map(g=><p key={g.hasta+g.turno}>Turno {g.turno||'sin turno'}: {g.personas} personas · {fa(g.desde)} al {fa(g.hasta)}</p>)}<p className="note">Archivos leídos: {r.leidos} · con horas: {r.usados}</p></>}
  if(esCap(tipo))return tipo==='cap_skap'?<p>SKAP: {r.skap.length} personas · Plan de acción: {r.plan.filter(x=>x.estado==='NOK').length} pendientes y {r.plan.filter(x=>x.estado==='OK').length} aprobados</p>:<p>Tareas: {new Set(r.tareas.map(x=>x.empleado_id)).size} personas</p>;
  if(esAE(tipo))return <p>Turnos: {r.turnos.join(', ')||'—'} · Resúmenes: {r.mensuales.length} · Días: {r.diarios.length} · Pausas: {r.pausas.length}</p>;
- return <p>Filas leídas: {r.read} · Registros válidos: {r.valid.length}{tipo==='voice'&&<> · Errores detectados: {r.totalErrores}</>}{tipo==='logueo'&&r.desde&&<> · Días: {r.desde.split('-').reverse().join('/')} al {r.hasta?.split('-').reverse().join('/')}</>}</p>;
+ return <><p>Filas leídas: {r.read} · Registros válidos: {r.valid.length}{tipo==='voice'&&<> · Errores detectados: {r.totalErrores}</>}{tipo==='logueo'&&r.desde&&<> · Días: {r.desde.split('-').reverse().join('/')} al {r.hasta?.split('-').reverse().join('/')}</>}</p>{tipo==='logueo'&&<MesesLogueo porMes={r.porMes}/>}</>;
 }
 
 export default function ExcelVinculados({profile}){
