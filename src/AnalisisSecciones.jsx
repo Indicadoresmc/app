@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import { cargarTabla, invalidarDatosAnalisis } from './datosAnalisis';
 import { candidatosPausa, clasificar } from './AutoelevadorPersonal';
 import { minutosOcupada } from './logueoAE';
-import { colorSemaforo, textoSemaforo, Ocupada } from './LogueoPersonal';
+import { colorSemaforo, textoSemaforo, Ocupada, HoraFinal } from './LogueoPersonal';
 import { MIN_DIAS, TARGET_GENERAL, MESES, n, txt, norm, fmt, pct, iso, fechaAR, turnoCanon, nombreTurno, operadorKey, diasUnicos, suma, noEsError, esAdministrativo, resumen, Card, Empty, Pill, TARGETS_ORIGINALES, aplicarTargets } from './analisisUtil';
 
 // Secciones del Análisis que usan datos que ya se cargan desde los Excel y antes no se mostraban.
@@ -303,7 +303,7 @@ export function FichaExtra({ ctx, ficha }){
   if(!datos) return <Cargando error={error}/>;
   const clasif = delTurno(datos.clasificacion_manual.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno), c = resumenClasif(clasif);
   const auto = delTurno(datos.autoelevador_diario.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno);
-  const log = delTurno(logueo.filter(r => txt(r.empleado_id) === id && ctx.enRango(r)), ctx.turno), verdes = log.filter(r => /^verde/i.test(r.semaforo || '')).length;
+  const log = delTurno(logueo.filter(r => txt(r.empleado_id) === id && ctx.enRango(r) && r.primer_logueo), ctx.turno), verdes = log.filter(r => /^verde/i.test(r.semaforo || '')).length;
   return <section className="panel"><h3>🧩 Otros módulos de {ficha.name}</h3>
     <div className="analysis-kpis">
       <Card title="ERRORES POR TIPO" value={tipos.length ? tipos.map(([t, v]) => `${v} ${t.toLowerCase()}`).join(' · ') : 'Sin errores'}/>
@@ -319,7 +319,7 @@ export function FichaExtra({ ctx, ficha }){
       { t:'Fecha', v:r => fechaAR(r.fecha) }, { t:'Turno', v:r => r.turno }, { t:'Horario', v:r => txt(r.hora_esperada).slice(0, 5) }, { t:'Primer logueo', v:r => txt(r.primer_logueo).slice(0, 5), f:v => <b>{v}</b> },
       { t:'Diferencia', v:r => r.minutos_diferencia, f:v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} min` },
       { t:'Estado', v:r => textoSemaforo(r.semaforo), f:(v, r) => <span className="auto-status" style={{ background: colorSemaforo(r.semaforo), color: /^amarillo/i.test(r.semaforo || '') ? '#332800' : '#fff' }}>{v}</span> },
-      { t:'Máquina', v:r => r.ae_inicial || '—' }, { t:'Máquina (turno anterior)', v:r => r.ultimo_uso || '', f:(v, r) => <Ocupada ultimo={r.ultimo_uso} esperada={r.hora_esperada}/> }, { t:'Hora final', v:r => txt(r.hora_final).slice(0, 5) || '—' }
+      { t:'Máquina', v:r => r.ae_inicial || '—' }, { t:'Máquina (turno anterior)', v:r => r.ultimo_uso || '', f:(v, r) => <Ocupada ultimo={r.ultimo_uso} esperada={r.hora_esperada}/> }, { t:'Hora final', v:r => txt(r.hora_final).slice(0, 5), f:(v, r) => <HoraFinal r={r}/> }
     ]}/>}
   </section>;
 }
@@ -386,7 +386,7 @@ export function LogueoAdmin({ ctx }){
   const { enRango, turno, periodo, year, month } = ctx;
   const calc = useMemo(() => {
     if(!datos) return null;
-    const rows = delTurno(datos.autoelevador_logueo.filter(enRango), turno).sort((a, b) => b.fecha.localeCompare(a.fecha) || txt(a.operador).localeCompare(txt(b.operador)));
+    const rows = delTurno(datos.autoelevador_logueo.filter(r => enRango(r) && r.primer_logueo), turno).sort((a, b) => b.fecha.localeCompare(a.fecha) || txt(a.operador).localeCompare(txt(b.operador)));
     const color = (r, re) => re.test(r.semaforo || '');
     const premio = new Map(datos.autoelevador_logueo_mensual.filter(m => +m.anio === +year && +m.mes === +month).map(m => [txt(m.empleado_id), m]));
     const ocupada = r => (minutosOcupada(r.ultimo_uso, r.hora_esperada) ?? 0) > 0;
@@ -416,7 +416,7 @@ export function LogueoAdmin({ ctx }){
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><select value={operador} onChange={e => setOperador(e.target.value)} style={{ margin: 0 }}><option value="">Todos los operadores</option>{calc.porOp.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)).map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select>
       {detalle.length > 0 && <button className="btn-export" onClick={() => exportarExcel('Logueo_dia_por_dia', ['Fecha','Turno','Operador','Horario','Primer logueo','Diferencia (min)','Estado','Máquina inicial','Máquinas usadas','Último uso de la máquina','Min. ocupada después del horario','Hora final'], detalle.map(r => [fechaAR(r.fecha), r.turno, nombreDe(ctx.empMap, r.empleado_id, r.operador), r.hora_esperada, r.primer_logueo, r.minutos_diferencia, textoSemaforo(r.semaforo), r.ae_inicial, r.ae_utilizados, r.ultimo_uso || '', Math.max(0, minutosOcupada(r.ultimo_uso, r.hora_esperada) ?? 0), r.hora_final]))}>⬇ Excel</button>}</div></div>
       {detalle.length ? <div className="scroll"><table><thead><tr>{['Fecha','Turno','Operador','Horario','Primer logueo','Diferencia','Estado','Máquina inicial','Máquina (turno anterior)','Hora final'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-        <tbody>{detalle.slice(0, 400).map(r => <tr key={r.id}><td>{fechaAR(r.fecha)}</td><td>{r.turno}</td><td>{nombreDe(ctx.empMap, r.empleado_id, r.operador)}</td><td>{txt(r.hora_esperada).slice(0, 5)}</td><td><b>{txt(r.primer_logueo).slice(0, 5)}</b></td><td>{r.minutos_diferencia == null ? '—' : `${r.minutos_diferencia > 0 ? '+' : ''}${r.minutos_diferencia} min`}</td><td>{semaforo(r.semaforo)}</td><td>{r.ae_inicial || '—'}</td><td><Ocupada ultimo={r.ultimo_uso} esperada={r.hora_esperada}/></td><td>{txt(r.hora_final).slice(0, 5) || '—'}</td></tr>)}</tbody></table>
+        <tbody>{detalle.slice(0, 400).map(r => <tr key={r.id}><td>{fechaAR(r.fecha)}</td><td>{r.turno}</td><td>{nombreDe(ctx.empMap, r.empleado_id, r.operador)}</td><td>{txt(r.hora_esperada).slice(0, 5)}</td><td><b>{txt(r.primer_logueo).slice(0, 5)}</b></td><td>{r.minutos_diferencia == null ? '—' : `${r.minutos_diferencia > 0 ? '+' : ''}${r.minutos_diferencia} min`}</td><td>{semaforo(r.semaforo)}</td><td>{r.ae_inicial || '—'}</td><td><Ocupada ultimo={r.ultimo_uso} esperada={r.hora_esperada}/></td><td><HoraFinal r={r}/></td></tr>)}</tbody></table>
         {detalle.length > 400 && <p className="note">Se muestran los primeros 400 de {detalle.length}. Bajá el Excel para ver todos o elegí un operador.</p>}</div> : <Empty/>}
     </section>
   </section>;

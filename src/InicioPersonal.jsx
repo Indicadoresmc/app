@@ -27,7 +27,7 @@ export default function InicioPersonal({periodo,profile,dia,setDia,irA}){
   const mm=String(periodo.mes).padStart(2,'0'),fin=new Date(periodo.anio,periodo.mes,0).getDate(),desde=`${periodo.anio}-${mm}-01`,hasta=`${periodo.anio}-${mm}-${fin}`;
   const porPeriodo=t=>supabase.from(t).select('*').eq('periodo_id',periodo.id).eq('empleado_id',empleadoId);
   Promise.all([porPeriodo('picking'),porPeriodo('clasificacion_manual'),porPeriodo('errores_gatera'),porPeriodo('errores_voice'),porPeriodo('autoelevador_diario'),
-   supabase.from('autoelevador_logueo').select('*').eq('empleado_id',empleadoId).gte('fecha',desde).lte('fecha',hasta),
+   supabase.from('autoelevador_logueo').select('*').eq('empleado_id',empleadoId).not('primer_logueo','is',null).gte('fecha',desde).lte('fecha',hasta),
    supabase.from('capacitacion_skap').select('*').eq('empleado_id',empleadoId),supabase.from('capacitacion_plan').select('estado').eq('empleado_id',empleadoId)])
   .then(r=>{if(!vivo)return;const[p,c,g,v,a,l,s,pl]=r.map(x=>x.error?[]:(x.data||[]));setDatos({picking:p,clasif:c,gatera:g,voice:v,ae:a,logueo:l,skap:s,plan:pl})})
   .catch(e=>vivo&&setError(e.message||'No se pudieron cargar los datos.'));

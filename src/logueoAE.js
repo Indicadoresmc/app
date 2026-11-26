@@ -47,10 +47,12 @@ export async function revisarLogueo(file){
   const ultimo = new Map();
   if(wb.Sheets['Soporte_Resumen']){ const s = tabla(wb, 'Soporte_Resumen', ['Clave', 'Último uso']); s.filas.forEach(r => { const v = r[s.ix('Último uso')]; if(v != null && v !== '') ultimo.set(String(r[s.ix('Clave')]), hora(v)); }); }
 
-  const valid = [], unknown = new Map(), seen = new Set(); let discarded = 0, duplicates = 0;
+  const valid = [], unknown = new Map(), seen = new Set(); let discarded = 0, duplicates = 0, sinLogueo = 0;
   for(const r of ctl.filas){
     const fecha = fechaISO(r[ctl.ix('Fecha')]), legajo = texto(r[ctl.ix('ID Operador')])?.replace(/\.0$/, ''), nombre = texto(r[ctl.ix('Operador')]), turno = texto(r[ctl.ix('Turno trabajado')]);
     if(!fecha || !legajo || !turno){ discarded++; continue; }
+    // Días sin primer logueo (domingos, feriados, francos, ausencias): no son jornadas en la máquina, no se publican.
+    if(hora(r[ctl.ix('Primer logueo')]) == null){ sinLogueo++; continue; }
     const emp = buscar(legajo, nombre); if(!emp){ unknown.set(legajo, `${nombre} (${legajo})`); continue; }
     const key = `${fecha}|${turno}|${legajo}`; if(seen.has(key)){ duplicates++; continue; } seen.add(key);
     valid.push({ empleado_id: emp.id, legajo, operador: nombre, fecha, turno,
@@ -72,7 +74,7 @@ export async function revisarLogueo(file){
     }
   }
   const fechas = valid.map(x => x.fecha).sort();
-  return { tipo: 'logueo', valid, mensual, unknown: [...unknown.values()], discarded, duplicates, read: ctl.filas.length, sheet: 'Control_Diario', desde: fechas[0], hasta: fechas.at(-1) };
+  return { tipo: 'logueo', valid, mensual, unknown: [...unknown.values()], discarded, duplicates, sinLogueo, read: ctl.filas.length, sheet: 'Control_Diario', desde: fechas[0], hasta: fechas.at(-1) };
 }
 
 async function lotes(t, filas){ for(let i = 0; i < filas.length; i += 300){ const { error } = await supabase.from(t).insert(filas.slice(i, i + 300)); if(error) throw error; } }
@@ -87,6 +89,14 @@ export async function publicarLogueo(review, { archivo }){
   await lotes('autoelevador_logueo_mensual', conArchivo(review.mensual));
   const f = v => v.split('-').reverse().join('/');
   return `Publicado: ${review.valid.length} jornadas de logueo del ${f(review.desde)} al ${f(review.hasta)} y ${review.mensual.length} resultados de premiación.`;
+}
+
+// Hora final sospechosa: menos de 4 h entre el primer logueo y la hora final. Pasa cuando el Excel
+// se actualizó en medio del turno (el último dato es la hora del corte, ej. 13:54), no porque el operador se fue.
+export function horaFinalParcial(primer, final){
+  const m = t => { const x = String(t || '').match(/^(\d{1,2}):(\d{2})/); return x ? +x[1] * 60 + +x[2] : null; };
+  const a = m(primer), b = m(final); if(a == null || b == null) return false;
+  let d = b - a; if(d < 0) d += 1440; return d < 240;
 }
 
 // Minutos que la máquina siguió en uso después de la hora esperada de ingreso (negativo = quedó libre antes).
